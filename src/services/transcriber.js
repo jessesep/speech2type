@@ -1,8 +1,12 @@
 import { spawn } from 'child_process';
 import EventEmitter from 'events';
 import path from 'path';
+import { existsSync } from 'fs';
 
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
+
+// Lock file that indicates TTS is speaking (don't send audio to API)
+const TTS_LOCK_FILE = '/tmp/claude-tts-speaking';
 
 class TranscriberService extends EventEmitter {
   constructor(config) {
@@ -100,6 +104,11 @@ class TranscriberService extends EventEmitter {
 
     this.micProc.stdout.on('data', (chunk) => {
       if (!this.dgConn || !this.isRunning) return;
+
+      // Don't send audio to API while TTS is speaking (saves API costs)
+      if (existsSync(TTS_LOCK_FILE)) {
+        return;
+      }
 
       try {
         this.dgConn.send(chunk);
