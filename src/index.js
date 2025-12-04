@@ -7,9 +7,10 @@ import { HotkeyService } from './services/hotkey.js';
 import { PermissionService } from './services/permission.js';
 import { TranscriberService } from './services/transcriber.js';
 import { TyperService } from './services/typer.js';
+import { AbletonService } from './services/ableton.js';
 
 let sessionActive = false;
-let hotkeyService, transcriberService, typerService;
+let hotkeyService, transcriberService, typerService, abletonService;
 
 // Buffer for handling commands that come as separate chunks
 let pendingText = '';
@@ -39,8 +40,12 @@ let currentConfig = null;
 // Only true once when s2t first launches, never reset
 let isInitMode = true;
 
+// Mode system - 'general' or 'ableton'
+let currentMode = 'general';
+
 // Voice commands - using "affirmative" as the main trigger
-const VOICE_COMMANDS = {
+// GENERAL mode commands (always available)
+const GENERAL_COMMANDS = {
   // Submit / Enter
   'affirmative': 'enter',
   'computer enter': 'enter',
@@ -77,7 +82,76 @@ const VOICE_COMMANDS = {
   // Claude Code launch
   'computer resume': 'claude_resume',
   'computer fresh': 'claude_fresh',
+
+  // Mode switching (always available)
+  'computer general mode': 'mode_general',
+  'computer ableton mode': 'mode_ableton',
 };
+
+// ABLETON mode commands
+const ABLETON_COMMANDS = {
+  // Transport
+  'play': 'ableton_play',
+  'stop': 'ableton_stop',
+  'continue': 'ableton_continue',
+  'record': 'ableton_record',
+  'overdub': 'ableton_overdub',
+  'tap': 'ableton_tap',
+  'tap tempo': 'ableton_tap',
+  'undo': 'ableton_undo',
+  'redo': 'ableton_redo',
+
+  // Metronome
+  'metronome on': 'ableton_metronome_on',
+  'metronome off': 'ableton_metronome_off',
+  'click on': 'ableton_metronome_on',
+  'click off': 'ableton_metronome_off',
+
+  // Loop
+  'loop on': 'ableton_loop_on',
+  'loop off': 'ableton_loop_off',
+
+  // Scene (basic - scene 1, scene 2, etc handled separately)
+  'stop all': 'ableton_stop_all',
+  'stop all clips': 'ableton_stop_all',
+
+  // Navigation
+  'next cue': 'ableton_next_cue',
+  'previous cue': 'ableton_prev_cue',
+
+  // Mode switching (also available in Ableton mode)
+  'computer general mode': 'mode_general',
+  'computer ableton mode': 'mode_ableton',
+  'general mode': 'mode_general',
+  'exit': 'mode_general',
+};
+
+// Dynamic patterns for Ableton (tempo 120, scene 1, mute track 2, etc.)
+const ABLETON_PATTERNS = [
+  { pattern: /^tempo\s+(\d+)$/, action: 'ableton_tempo', extract: (m) => parseInt(m[1]) },
+  { pattern: /^scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
+  { pattern: /^fire\s+scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
+  { pattern: /^mute\s+track\s+(\d+)$/, action: 'ableton_mute', extract: (m) => parseInt(m[1]) },
+  { pattern: /^unmute\s+track\s+(\d+)$/, action: 'ableton_unmute', extract: (m) => parseInt(m[1]) },
+  { pattern: /^solo\s+track\s+(\d+)$/, action: 'ableton_solo', extract: (m) => parseInt(m[1]) },
+  { pattern: /^unsolo\s+track\s+(\d+)$/, action: 'ableton_unsolo', extract: (m) => parseInt(m[1]) },
+  { pattern: /^arm\s+track\s+(\d+)$/, action: 'ableton_arm', extract: (m) => parseInt(m[1]) },
+  { pattern: /^disarm\s+track\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
+  { pattern: /^select\s+track\s+(\d+)$/, action: 'ableton_select_track', extract: (m) => parseInt(m[1]) },
+  { pattern: /^track\s+(\d+)$/, action: 'ableton_select_track', extract: (m) => parseInt(m[1]) },
+];
+
+// Get active commands based on current mode
+function getActiveCommands() {
+  if (currentMode === 'ableton') {
+    // In Ableton mode, Ableton commands take priority, but general commands still work
+    return { ...GENERAL_COMMANDS, ...ABLETON_COMMANDS };
+  }
+  return GENERAL_COMMANDS;
+}
+
+// For backward compatibility
+const VOICE_COMMANDS = GENERAL_COMMANDS;
 
 // Play a soft beep for audio feedback
 function playBeep() {
@@ -227,6 +301,7 @@ function initializeServices(config) {
   hotkeyService = new HotkeyService(config);
   transcriberService = new TranscriberService(config);
   typerService = new TyperService(config);
+  abletonService = new AbletonService();
 }
 
 function startSession(config) {
@@ -334,8 +409,62 @@ function startSession(config) {
       }
     }
 
+    // In Ableton mode, check dynamic patterns first (tempo 120, scene 1, etc.)
+    if (currentMode === 'ableton') {
+      for (const { pattern, action, extract } of ABLETON_PATTERNS) {
+        const match = cleanText.match(pattern);
+        if (match) {
+          // Clear any pending
+          if (pendingTimeout) {
+            clearTimeout(pendingTimeout);
+            pendingTimeout = null;
+          }
+          if (pendingText) {
+            await typerService.typeText(pendingText + ' ');
+            pendingText = '';
+          }
+
+          const value = extract(match);
+          console.log(chalk.magenta(`[ableton] ${action} → ${value}`));
+          playBeep();
+
+          switch (action) {
+            case 'ableton_tempo':
+              abletonService.setTempo(value);
+              break;
+            case 'ableton_scene':
+              abletonService.fireScene(value);
+              break;
+            case 'ableton_mute':
+              abletonService.muteTrack(value);
+              break;
+            case 'ableton_unmute':
+              abletonService.unmuteTrack(value);
+              break;
+            case 'ableton_solo':
+              abletonService.soloTrack(value);
+              break;
+            case 'ableton_unsolo':
+              abletonService.unsoloTrack(value);
+              break;
+            case 'ableton_arm':
+              abletonService.armTrack(value);
+              break;
+            case 'ableton_disarm':
+              abletonService.disarmTrack(value);
+              break;
+            case 'ableton_select_track':
+              abletonService.selectTrack(value);
+              break;
+          }
+          return;
+        }
+      }
+    }
+
     // Check if this chunk is ONLY a command (using cleaned text without punctuation)
-    if (VOICE_COMMANDS[cleanText]) {
+    const activeCommands = getActiveCommands();
+    if (activeCommands[cleanText]) {
       // Clear any pending timeout
       if (pendingTimeout) {
         clearTimeout(pendingTimeout);
@@ -343,7 +472,7 @@ function startSession(config) {
       }
 
       // For undo, don't type pending text - we want to undo it too
-      const action = VOICE_COMMANDS[cleanText];
+      const action = activeCommands[cleanText];
 
       if (action === 'undo') {
         // Delete pending text if any, or delete from history
@@ -374,6 +503,20 @@ function startSession(config) {
       console.log(chalk.cyan(`[voice command] "${cleanText}" → ${action}`));
 
       switch (action) {
+        // Mode switching
+        case 'mode_general':
+          currentMode = 'general';
+          console.log(chalk.green.bold('[mode] Switched to GENERAL mode'));
+          playBeep();
+          break;
+        case 'mode_ableton':
+          currentMode = 'ableton';
+          abletonService.connect();
+          console.log(chalk.magenta.bold('[mode] Switched to ABLETON mode'));
+          playBeep();
+          break;
+
+        // General commands
         case 'enter':
           await typerService.pressEnter();
           typedHistory.length = 0;
@@ -443,6 +586,68 @@ function startSession(config) {
             exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
             isInitMode = false;
           }
+          break;
+
+        // Ableton commands
+        case 'ableton_play':
+          abletonService.play();
+          playBeep();
+          break;
+        case 'ableton_stop':
+          abletonService.stop();
+          playBeep();
+          break;
+        case 'ableton_continue':
+          abletonService.continue();
+          playBeep();
+          break;
+        case 'ableton_record':
+          abletonService.record();
+          playBeep();
+          break;
+        case 'ableton_overdub':
+          abletonService.overdub();
+          playBeep();
+          break;
+        case 'ableton_tap':
+          abletonService.tapTempo();
+          playBeep();
+          break;
+        case 'ableton_undo':
+          abletonService.undo();
+          playBeep();
+          break;
+        case 'ableton_redo':
+          abletonService.redo();
+          playBeep();
+          break;
+        case 'ableton_metronome_on':
+          abletonService.metronomeOn();
+          playBeep();
+          break;
+        case 'ableton_metronome_off':
+          abletonService.metronomeOff();
+          playBeep();
+          break;
+        case 'ableton_loop_on':
+          abletonService.loopOn();
+          playBeep();
+          break;
+        case 'ableton_loop_off':
+          abletonService.loopOff();
+          playBeep();
+          break;
+        case 'ableton_stop_all':
+          abletonService.stopAllClips();
+          playBeep();
+          break;
+        case 'ableton_next_cue':
+          abletonService.jumpToNextCue();
+          playBeep();
+          break;
+        case 'ableton_prev_cue':
+          abletonService.jumpToPrevCue();
+          playBeep();
           break;
       }
       // After any command, disable init mode
