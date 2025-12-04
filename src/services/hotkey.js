@@ -37,6 +37,10 @@ class HotkeyService extends EventEmitter {
         this.emit('toggle_auto_read');
       } else if (trimmed === 'STOP_TTS') {
         this.emit('stop_tts');
+      } else if (trimmed === 'PUSH_TO_TALK_START') {
+        this.emit('push_to_talk_start');
+      } else if (trimmed === 'PUSH_TO_TALK_END') {
+        this.emit('push_to_talk_end');
       }
     });
 

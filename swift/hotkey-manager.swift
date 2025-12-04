@@ -20,6 +20,11 @@ var secondaryFlags: CGEventFlags = []
 let spacebarKeyCode: CGKeyCode = 49
 let ttsLockFile = "/tmp/claude-tts-speaking"
 
+// Push-to-talk hotkey (Cmd+Option) for music mode
+// Keycode 58 = Option key, we track when Cmd+Option is held
+var pushToTalkActive = false
+let cmdOptionFlags: CGEventFlags = [.maskCommand, .maskAlternate]
+
 // ---- Keyboard layout helpers ----
 
 private func currentKeyboardLayout() -> UnsafePointer<UCKeyboardLayout>? {
@@ -149,9 +154,27 @@ func parseHotkey(_ modifiers: String, _ key: String) -> Bool {
 // ---- Event tap ----
 
 func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    let flags = normalizedFlags(event.flags)
+
+    // Handle flags changed events for push-to-talk (Cmd+Option held/released)
+    if type == .flagsChanged {
+        let hasCmdOption = flags.contains(cmdOptionFlags)
+
+        if hasCmdOption && !pushToTalkActive {
+            // Cmd+Option pressed - start push-to-talk
+            pushToTalkActive = true
+            print("PUSH_TO_TALK_START")
+            fflush(stdout)
+        } else if !hasCmdOption && pushToTalkActive {
+            // Cmd+Option released - end push-to-talk
+            pushToTalkActive = false
+            print("PUSH_TO_TALK_END")
+            fflush(stdout)
+        }
+    }
+
     if type == .keyDown {
         let keycode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        let flags = normalizedFlags(event.flags)
 
         if isCapturing {
             var mods: [String] = []
@@ -254,7 +277,7 @@ func main() {
         tap: .cgSessionEventTap,
         place: .headInsertEventTap,
         options: .defaultTap,
-        eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue),
+        eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue) | CGEventMask(1 << CGEventType.flagsChanged.rawValue),
         callback: eventCallback,
         userInfo: nil
     ) else {

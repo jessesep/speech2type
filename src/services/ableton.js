@@ -94,9 +94,9 @@ class AbletonService {
   }
 
   toggleMetronome() {
-    // We'd need to query first, but for simplicity just toggle via a workaround
-    // For now, we'll implement on/off separately
-    console.log(chalk.yellow('[ableton] Use "metronome on" or "metronome off" instead'));
+    // Toggle by querying current state and flipping it
+    // For now, just turn it on - user can say "off" to turn off
+    this.send('/live/song/set/metronome', 1);
   }
 
   // Track controls (0-indexed internally, but user says 1-indexed)
@@ -160,6 +160,11 @@ class AbletonService {
     this.send('/live/song/set/loop', 0);
   }
 
+  toggleLoop() {
+    // For now, just turn it on - user can say "off" to turn off
+    this.send('/live/song/set/loop', 1);
+  }
+
   // Navigation
   jumpBy(bars) {
     // Jump by beats (4 beats per bar)
@@ -178,6 +183,58 @@ class AbletonService {
   setQuantization(value) {
     // 0=None, 1=8 bars, 2=4 bars, 3=2 bars, 4=1 bar, 5=1/2, 6=1/4, etc.
     this.send('/live/song/set/clip_trigger_quantization', value);
+  }
+
+  // Create tracks
+  createAudioTrack() {
+    this.send('/live/song/create_audio_track', -1); // -1 = at end
+  }
+
+  createMidiTrack() {
+    this.send('/live/song/create_midi_track', -1); // -1 = at end
+  }
+
+  createReturnTrack() {
+    this.send('/live/song/create_return_track');
+  }
+
+  deleteTrack(trackNum) {
+    this.send('/live/song/delete_track', trackNum - 1);
+  }
+
+  duplicateTrack(trackNum) {
+    this.send('/live/song/duplicate_track', trackNum - 1);
+  }
+
+  // Scene management
+  createScene() {
+    this.send('/live/song/create_scene', -1); // -1 = at end
+  }
+
+  deleteScene(sceneNum) {
+    this.send('/live/song/delete_scene', sceneNum - 1);
+  }
+
+  duplicateScene(sceneNum) {
+    this.send('/live/song/duplicate_scene', sceneNum - 1);
+  }
+
+  // Capture MIDI
+  captureMidi() {
+    this.send('/live/song/capture_midi');
+  }
+
+  // Clip creation
+  createClip(trackNum, slotNum, length = 4) {
+    this.send('/live/clip_slot/create_clip', trackNum - 1, slotNum - 1, length);
+  }
+
+  deleteClip(trackNum, slotNum) {
+    this.send('/live/clip_slot/delete_clip', trackNum - 1, slotNum - 1);
+  }
+
+  duplicateClip(trackNum, slotNum, toTrack, toSlot) {
+    this.send('/live/clip_slot/duplicate_clip_to', trackNum - 1, slotNum - 1, toTrack - 1, toSlot - 1);
   }
 }
 
