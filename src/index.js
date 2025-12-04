@@ -16,40 +16,16 @@ let pendingText = '';
 let pendingTimeout = null;
 const COMMAND_WAIT_MS = 400; // Wait this long to see if a command follows
 
-// Voice commands - trigger phrases mapped to actions
-// Added many variations to handle different transcription results
+// Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
-  // Submit/Enter commands - many variations
-  'send it': 'enter',
-  'send': 'enter',
-  'sent it': 'enter',      // common mishearing
-  'sent': 'enter',
-  'submit': 'enter',
-  'enter': 'enter',
-  'press enter': 'enter',
-  'execute': 'enter',
-  'run it': 'enter',
-  'run': 'enter',
-  'go': 'enter',
-  'do it': 'enter',
-  'done': 'enter',
-  'send that': 'enter',
-  'submit that': 'enter',
-
-  // Newline commands
-  'new line': 'newline',
-  'newline': 'newline',
-  'next line': 'newline',
-  'line break': 'newline',
-  'break': 'newline',
-
-  // Escape commands
-  'escape': 'escape',
-  'cancel': 'escape',
-  'stop': 'escape',
-  'nevermind': 'escape',
-  'never mind': 'escape',
+  // Primary command - "affirmative" with all punctuation variations handled by stripPunctuation()
+  'affirmative': 'enter',
 };
+
+// Strip all punctuation from text for command matching
+function stripPunctuation(text) {
+  return text.replace(/[.,!?;:'"()[\]{}]/g, '').trim();
+}
 
 // App switching patterns - "focus [app]", "switch to [app]", "open [app]"
 const APP_SWITCH_PATTERNS = [
@@ -148,9 +124,10 @@ function startSession(config) {
     if (!sessionActive) return;
 
     const lowerText = text.toLowerCase().trim();
+    const cleanText = stripPunctuation(lowerText);
 
     // Log what we received for debugging
-    console.log(chalk.dim(`[transcript] "${text}" → normalized: "${lowerText}"`));
+    console.log(chalk.dim(`[transcript] "${text}" → clean: "${cleanText}"`));
 
     // Check for app switching commands first (e.g., "focus terminal", "switch to chrome")
     for (const pattern of APP_SWITCH_PATTERNS) {
@@ -174,8 +151,8 @@ function startSession(config) {
       }
     }
 
-    // Check if this chunk is ONLY a command (e.g., user said "send it" after a pause)
-    if (VOICE_COMMANDS[lowerText]) {
+    // Check if this chunk is ONLY a command (using cleaned text without punctuation)
+    if (VOICE_COMMANDS[cleanText]) {
       // Clear any pending timeout
       if (pendingTimeout) {
         clearTimeout(pendingTimeout);
@@ -189,8 +166,8 @@ function startSession(config) {
       }
 
       // Execute the command
-      const action = VOICE_COMMANDS[lowerText];
-      console.log(chalk.cyan(`[voice command] "${lowerText}" → ${action}`));
+      const action = VOICE_COMMANDS[cleanText];
+      console.log(chalk.cyan(`[voice command] "${cleanText}" → ${action}`));
 
       switch (action) {
         case 'enter':
@@ -206,9 +183,10 @@ function startSession(config) {
       return;
     }
 
-    // Check if text ends with a command (e.g., "hello world send it" in one chunk)
+    // Check if text ends with a command (e.g., "hello world affirmative" in one chunk)
     for (const [phrase, action] of Object.entries(VOICE_COMMANDS)) {
-      if (lowerText.endsWith(phrase)) {
+      // Check if cleaned text ends with the command phrase
+      if (cleanText.endsWith(phrase)) {
         // Clear any pending
         if (pendingTimeout) {
           clearTimeout(pendingTimeout);
@@ -219,8 +197,8 @@ function startSession(config) {
           pendingText = '';
         }
 
-        // Type the text before the command
-        const textBeforeCommand = text.slice(0, -phrase.length).trim();
+        // Type the text before the command (use cleanText length calculation)
+        const textBeforeCommand = cleanText.slice(0, -phrase.length).trim();
         if (textBeforeCommand) {
           await typerService.typeText(textBeforeCommand + ' ');
         }
