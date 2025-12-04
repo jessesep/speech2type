@@ -20,6 +20,9 @@ const args = process.argv.slice(2);
 const command = args[0];
 const flag = args[1];
 
+// Check for --auto flag anywhere in args
+const autoStart = args.includes('--auto');
+
 async function main() {
   switch (command) {
     case 'config':
@@ -44,7 +47,7 @@ async function main() {
 
     case 'start':
     case undefined:
-      await startApplication(config);
+      await startApplication(config, { autoStart });
       break;
 
     default:

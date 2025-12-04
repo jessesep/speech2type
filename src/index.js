@@ -242,8 +242,6 @@ function startSession(config) {
   transcriberService.once('open', () => {
     console.debug('[speech2type] Speech recognition connection opened');
     playStartSound();
-    // Announce ready via TTS
-    exec('say -v Samantha "I\'m listening" &', () => {});
   });
   transcriberService.once('close', () => {
     console.debug('[speech2type] Speech recognition connection closed');
@@ -525,7 +523,7 @@ function stopSession(config) {
   transcriberService.stop();
 }
 
-async function startApplication(config) {
+async function startApplication(config, options = {}) {
   console.log(
     boxen(`${chalk.bold('Speech2Type')}\n\n${chalk.dim('Voice typing from your terminal.')}`, {
       padding: 1,
@@ -577,6 +575,11 @@ async function startApplication(config) {
     }, 800);
   });
   hotkeyService.start();
+
+  // Auto-start listening if --auto flag was passed
+  if (options.autoStart) {
+    startSession(config);
+  }
 }
 
 export { startApplication };
