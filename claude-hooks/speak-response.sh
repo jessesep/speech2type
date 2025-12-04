@@ -81,6 +81,10 @@ if [[ -n "$TRANSCRIPT" ]]; then
     # Speak the response (Samantha voice, 200 wpm)
     /usr/bin/say -v Samantha -r 200 "$TRANSCRIPT"
 
+    # Wait a moment after speaking before removing lock
+    # This prevents speech2type from picking up residual audio
+    sleep 1
+
     # Remove lock file when done
     rm -f "$SPEAKING_LOCK"
 fi
