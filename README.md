@@ -21,16 +21,19 @@ npm install -g speech2type && s2t start
 - **💸 Completely free**: Open source with free Deepgram API tier
 - **🌍 40+ languages**: English, Spanish, French, German, Japanese, Chinese, and many more
 
-### Fork Features (jessesep/speech2type-fork)
+### Fork Features (jessesep/speech2type)
 
-This fork adds **voice commands** for hands-free control:
+This fork adds **voice commands** and **Claude Code integration** for hands-free control:
 
 - **Submit text**: Say "affirmative" to press Enter
 - **Undo text**: Say "retract" to delete the last spoken chunk
+- **Clear all**: Say "retract everything confirm" to clear the input field
 - **Switch apps**: Say "focus chrome" or "switch to terminal"
 - **Switch Terminal windows**: Say "terminal 1" or "terminal claude"
+- **Text-to-speech**: Say "read it" to hear clipboard content
+- **Claude auto-speak**: Cmd+' toggles automatic reading of Claude responses
 
-See [Voice Commands](#voice-commands) for the complete list.
+See [Voice Commands](#voice-commands) and [Claude Code Integration](#claude-code-integration) for details.
 
 ### Perfect for:
 - **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)
@@ -84,12 +87,16 @@ This fork includes voice commands for hands-free control. All commands work with
 | Say | Action |
 |-----|--------|
 | **"retract"** | Delete the last transcribed text |
-| "disregard" | Delete the last transcribed text |
-| "scratch that" | Delete the last transcribed text |
-| "belay that" | Delete the last transcribed text |
-| "undo" | Delete the last transcribed text |
 
 *You can say "retract" multiple times to undo multiple chunks (up to 20).*
+
+### Clear Entire Input Field
+
+| Say | Action |
+|-----|--------|
+| **"retract everything confirm"** | Select all and delete (clears the input field) |
+
+*Requires "confirm" to prevent accidental clearing.*
 
 ### Text-to-Speech (Read Aloud)
 
@@ -107,27 +114,8 @@ Stop speaking:
 | Say | Action |
 |-----|--------|
 | **"silence"** | Stop reading |
-| "quiet" | Stop reading |
-| "hush" | Stop reading |
-| "stop reading" | Stop reading |
 
 *Tip: Copy Claude's response (Cmd+C), then say "read it" to hear it spoken aloud.*
-
-### Auto-Read Mode
-
-Automatically read new clipboard content aloud whenever it changes:
-
-| Say | Action |
-|-----|--------|
-| **"auto read on"** | Enable auto-read mode |
-| "auto read" | Enable auto-read mode |
-| "start auto read" | Enable auto-read mode |
-| **"auto read off"** | Disable auto-read mode |
-| "stop auto read" | Disable auto-read mode |
-
-*When auto-read is enabled, any new text copied to the clipboard will automatically be read aloud. Perfect for having Claude's responses read to you hands-free - just copy the response (Cmd+C) and it will be spoken automatically.*
-
-*Note: Speech recognition is paused while text is being read aloud to prevent feedback loops.*
 
 ### App Switching
 
@@ -164,6 +152,60 @@ Switch between multiple Terminal windows by index or by searching window titles:
 | **"window with code"** | Switch to Terminal window containing "code" in title |
 
 *Note: Terminal window titles typically show the current directory and running command.*
+
+## 🤖 Claude Code Integration
+
+This fork includes a hook that automatically reads Claude Code responses aloud using macOS text-to-speech.
+
+### Hotkeys
+
+| Hotkey | Action |
+|--------|--------|
+| **Cmd+;** | Start/stop voice typing |
+| **Cmd+'** | Toggle Claude auto-speak on/off |
+
+### Setup
+
+1. **Copy the hook script:**
+```bash
+mkdir -p ~/.claude/hooks
+cp claude-hooks/speak-response.sh ~/.claude/hooks/
+chmod +x ~/.claude/hooks/speak-response.sh
+```
+
+2. **Register the hook** - Create or edit `~/.claude/settings.json`:
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/YOURUSERNAME/.claude/hooks/speak-response.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+*Replace `YOURUSERNAME` with your actual username.*
+
+3. **Enable auto-speak by default** (optional) - Add to `~/.zshrc`:
+```bash
+touch /tmp/claude-auto-speak
+```
+
+### How It Works
+
+- When Claude finishes responding, the hook reads the response aloud
+- Speech2type pauses transcription while TTS is active (prevents feedback loops)
+- Toggle on/off anytime with **Cmd+'**
+- Say **"silence"** to stop current speech
+
+See [claude-hooks/README.md](claude-hooks/README.md) for detailed documentation.
 
 ## 📋 Requirements
 
