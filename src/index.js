@@ -7,10 +7,10 @@ import { HotkeyService } from './services/hotkey.js';
 import { PermissionService } from './services/permission.js';
 import { TranscriberService } from './services/transcriber.js';
 import { TyperService } from './services/typer.js';
-import { AbletonService } from './services/ableton.js';
+import { AddonLoader } from './services/addon-loader.js';
 
 let sessionActive = false;
-let hotkeyService, transcriberService, typerService, abletonService;
+let hotkeyService, transcriberService, typerService, addonLoader;
 
 // Buffer for handling commands that come as separate chunks
 let pendingText = '';
@@ -40,11 +40,8 @@ let currentConfig = null;
 // Only true once when s2t first launches, never reset
 let isInitMode = true;
 
-// Mode system - 'general', 'ableton', or 'claude'
+// Mode system - 'general', 'addon', or 'claude'
 let currentMode = 'general';
-
-// Push-to-talk state for music mode
-let pushToTalkMode = false; // When true, Cmd+Option controls listening
 
 // Claude mode - auto pause/resume listening after response
 const CLAUDE_RESPONSE_DONE_FILE = '/tmp/claude-response-done';
@@ -86,7 +83,6 @@ const GENERAL_COMMANDS = {
 
   // Listening control
   'computer stop listening': 'stop_listening',
-  'computer stop': 'stop_listening',
 
   // TTS control
   'computer text to speech on': 'tts_on',
@@ -100,8 +96,6 @@ const GENERAL_COMMANDS = {
 
   // Mode switching (always available)
   'computer general mode': 'mode_general',
-  'computer music mode': 'mode_ableton',
-  'computer ableton mode': 'mode_ableton',
 
   // Claude/Power mode - many variations for speech recognition
   'computer power mode': 'mode_claude',
@@ -110,187 +104,36 @@ const GENERAL_COMMANDS = {
   'computer claude mode': 'mode_claude',
 };
 
-// ABLETON mode commands - all require "computer" prefix, with many variations
-const ABLETON_COMMANDS = {
-  // Transport - play
-  'computer play': 'ableton_play',
-  'computer start': 'ableton_play',
-  'computer go': 'ableton_play',
-  'computer playing': 'ableton_play',
-
-  // Transport - stop
-  'computer stop': 'ableton_stop',
-  'computer pause': 'ableton_stop',
-  'computer halt': 'ableton_stop',
-
-  // Transport - continue
-  'computer continue': 'ableton_continue',
-  'computer resume': 'ableton_continue',
-
-  // Transport - record
-  'computer record': 'ableton_record',
-  'computer recording': 'ableton_record',
-  'computer rec': 'ableton_record',
-  'computer start recording': 'ableton_record',
-
-  // Transport - overdub
-  'computer overdub': 'ableton_overdub',
-  'computer over dub': 'ableton_overdub',
-
-  // Transport - tap tempo
-  'computer tap': 'ableton_tap',
-  'computer tap tempo': 'ableton_tap',
-  'computer tempo tap': 'ableton_tap',
-
-  // Transport - undo/redo
-  'computer undo': 'ableton_undo',
-  'computer redo': 'ableton_redo',
-
-  // Metronome - many variations
-  'computer metronome': 'ableton_metronome_toggle',
-  'computer metronome on': 'ableton_metronome_on',
-  'computer metronome off': 'ableton_metronome_off',
-  'computer toggle metronome': 'ableton_metronome_toggle',
-  'computer click': 'ableton_metronome_toggle',
-  'computer click on': 'ableton_metronome_on',
-  'computer click off': 'ableton_metronome_off',
-  'computer toggle click': 'ableton_metronome_toggle',
-
-  // Loop - many variations
-  'computer loop': 'ableton_loop_toggle',
-  'computer loop on': 'ableton_loop_on',
-  'computer loop off': 'ableton_loop_off',
-  'computer toggle loop': 'ableton_loop_toggle',
-  'computer looping': 'ableton_loop_toggle',
-
-  // Stop all clips
-  'computer stop all': 'ableton_stop_all',
-  'computer stop all clips': 'ableton_stop_all',
-  'computer stop clips': 'ableton_stop_all',
-  'computer stop everything': 'ableton_stop_all',
-
-  // Navigation
-  'computer next cue': 'ableton_next_cue',
-  'computer previous cue': 'ableton_prev_cue',
-  'computer next marker': 'ableton_next_cue',
-  'computer previous marker': 'ableton_prev_cue',
-  'computer cue next': 'ableton_next_cue',
-  'computer cue previous': 'ableton_prev_cue',
-
-  // Create tracks
-  'computer new audio track': 'ableton_create_audio',
-  'computer create audio track': 'ableton_create_audio',
-  'computer add audio track': 'ableton_create_audio',
-  'computer new midi track': 'ableton_create_midi',
-  'computer create midi track': 'ableton_create_midi',
-  'computer add midi track': 'ableton_create_midi',
-  'computer new return track': 'ableton_create_return',
-  'computer create return track': 'ableton_create_return',
-  'computer add return track': 'ableton_create_return',
-
-  // Scene management
-  'computer new scene': 'ableton_create_scene',
-  'computer create scene': 'ableton_create_scene',
-  'computer add scene': 'ableton_create_scene',
-
-  // Capture MIDI
-  'computer capture': 'ableton_capture',
-  'computer capture midi': 'ableton_capture',
-
-  // Common shortcuts (also available in Ableton mode)
-  'computer find': 'find',
-  'computer search': 'find',
-
-  // Mode switching (also available in Ableton mode)
-  'computer general mode': 'mode_general',
-  'computer ableton mode': 'mode_ableton',
-  'computer music mode': 'mode_ableton',
-  'computer exit': 'mode_general',
-};
-
-// Dynamic patterns for Ableton - all require "computer" prefix, with variations
-const ABLETON_PATTERNS = [
-  // Tempo variations
-  { pattern: /^computer\s+tempo\s+(\d+)$/, action: 'ableton_tempo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+set\s+tempo\s+(\d+)$/, action: 'ableton_tempo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+bpm\s+(\d+)$/, action: 'ableton_tempo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+(\d+)\s+bpm$/, action: 'ableton_tempo', extract: (m) => parseInt(m[1]) },
-
-  // Scene variations
-  { pattern: /^computer\s+scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+fire\s+scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+launch\s+scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+play\s+scene\s+(\d+)$/, action: 'ableton_scene', extract: (m) => parseInt(m[1]) },
-
-  // Mute variations - "mute track 1", "mute 1", "track 1 mute"
-  { pattern: /^computer\s+mute\s+track\s+(\d+)$/, action: 'ableton_mute', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+mute\s+(\d+)$/, action: 'ableton_mute', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+mute$/, action: 'ableton_mute', extract: (m) => parseInt(m[1]) },
-
-  // Unmute variations
-  { pattern: /^computer\s+unmute\s+track\s+(\d+)$/, action: 'ableton_unmute', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+unmute\s+(\d+)$/, action: 'ableton_unmute', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+un\s*mute\s+track\s+(\d+)$/, action: 'ableton_unmute', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+unmute$/, action: 'ableton_unmute', extract: (m) => parseInt(m[1]) },
-
-  // Solo variations
-  { pattern: /^computer\s+solo\s+track\s+(\d+)$/, action: 'ableton_solo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+solo\s+(\d+)$/, action: 'ableton_solo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+solo$/, action: 'ableton_solo', extract: (m) => parseInt(m[1]) },
-
-  // Unsolo variations
-  { pattern: /^computer\s+unsolo\s+track\s+(\d+)$/, action: 'ableton_unsolo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+unsolo\s+(\d+)$/, action: 'ableton_unsolo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+un\s*solo\s+track\s+(\d+)$/, action: 'ableton_unsolo', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+unsolo$/, action: 'ableton_unsolo', extract: (m) => parseInt(m[1]) },
-
-  // Arm variations
-  { pattern: /^computer\s+arm\s+track\s+(\d+)$/, action: 'ableton_arm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+arm\s+(\d+)$/, action: 'ableton_arm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+arm$/, action: 'ableton_arm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+record\s+arm\s+(\d+)$/, action: 'ableton_arm', extract: (m) => parseInt(m[1]) },
-
-  // Disarm variations
-  { pattern: /^computer\s+disarm\s+track\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+disarm\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+dis\s*arm\s+track\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)\s+disarm$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+unarm\s+track\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+unarm\s+(\d+)$/, action: 'ableton_disarm', extract: (m) => parseInt(m[1]) },
-
-  // Select track variations
-  { pattern: /^computer\s+select\s+track\s+(\d+)$/, action: 'ableton_select_track', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+track\s+(\d+)$/, action: 'ableton_select_track', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+go\s+to\s+track\s+(\d+)$/, action: 'ableton_select_track', extract: (m) => parseInt(m[1]) },
-
-  // Volume variations
-  { pattern: /^computer\s+volume\s+track\s+(\d+)\s+(\d+)$/, action: 'ableton_volume', extract: (m) => ({ track: parseInt(m[1]), volume: parseInt(m[2]) }) },
-  { pattern: /^computer\s+track\s+(\d+)\s+volume\s+(\d+)$/, action: 'ableton_volume', extract: (m) => ({ track: parseInt(m[1]), volume: parseInt(m[2]) }) },
-
-  // Delete track variations
-  { pattern: /^computer\s+delete\s+track\s+(\d+)$/, action: 'ableton_delete_track', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+remove\s+track\s+(\d+)$/, action: 'ableton_delete_track', extract: (m) => parseInt(m[1]) },
-
-  // Duplicate track variations
-  { pattern: /^computer\s+duplicate\s+track\s+(\d+)$/, action: 'ableton_duplicate_track', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+copy\s+track\s+(\d+)$/, action: 'ableton_duplicate_track', extract: (m) => parseInt(m[1]) },
-
-  // Delete scene variations
-  { pattern: /^computer\s+delete\s+scene\s+(\d+)$/, action: 'ableton_delete_scene', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+remove\s+scene\s+(\d+)$/, action: 'ableton_delete_scene', extract: (m) => parseInt(m[1]) },
-
-  // Duplicate scene variations
-  { pattern: /^computer\s+duplicate\s+scene\s+(\d+)$/, action: 'ableton_duplicate_scene', extract: (m) => parseInt(m[1]) },
-  { pattern: /^computer\s+copy\s+scene\s+(\d+)$/, action: 'ableton_duplicate_scene', extract: (m) => parseInt(m[1]) },
-];
-
 // Get active commands based on current mode
 function getActiveCommands() {
-  if (currentMode === 'ableton') {
-    // In Ableton mode, Ableton commands take priority, but general commands still work
-    return { ...GENERAL_COMMANDS, ...ABLETON_COMMANDS };
+  const commands = { ...GENERAL_COMMANDS };
+
+  // Add addon mode switching commands
+  if (addonLoader) {
+    Object.assign(commands, addonLoader.getModeCommands());
   }
-  return GENERAL_COMMANDS;
+
+  // In addon mode, add addon-specific commands
+  if (currentMode === 'addon' && addonLoader) {
+    const addonCommands = addonLoader.getActiveCommands();
+    Object.assign(commands, addonCommands);
+
+    // In addon mode, "computer stop" should go to addon, not stop_listening
+    // Remove general stop_listening if addon has a stop command
+    if (addonCommands['computer stop']) {
+      delete commands['computer stop listening'];
+    }
+  }
+
+  return commands;
+}
+
+// Get active patterns for current mode
+function getActivePatterns() {
+  if (currentMode === 'addon' && addonLoader) {
+    return addonLoader.getActivePatterns();
+  }
+  return [];
 }
 
 // Claude mode: watch for response completion and resume listening
@@ -469,7 +312,7 @@ function playStopSound() {
   exec('afplay -v 0.3 -r 0.8 /System/Library/Sounds/Bottle.aiff &', () => {});
 }
 
-function initializeServices(config) {
+async function initializeServices(config) {
   const permissionService = new PermissionService(config);
   const permissionsGranted = permissionService.validateAllPermissions();
   if (!permissionsGranted) {
@@ -479,7 +322,117 @@ function initializeServices(config) {
   hotkeyService = new HotkeyService(config);
   transcriberService = new TranscriberService(config);
   typerService = new TyperService(config);
-  abletonService = new AbletonService();
+
+  // Load addons
+  addonLoader = new AddonLoader(config.projectRoot);
+  await addonLoader.loadAll();
+}
+
+// Execute a general action (keyboard shortcuts, mode switches, etc.)
+async function executeGeneralAction(action) {
+  switch (action) {
+    case 'enter':
+      await typerService.pressEnter();
+      typedHistory.length = 0;
+      playBeep();
+      // In Claude mode, pause listening after submit
+      if (currentMode === 'claude' && currentConfig) {
+        console.log(chalk.cyan('[claude mode] Pausing listening - waiting for response...'));
+        stopSession(currentConfig);
+      }
+      return true;
+    case 'clear_all':
+      await typerService.clearAll();
+      typedHistory.length = 0;
+      playBeep();
+      return true;
+    case 'stop_speak':
+      await typerService.stopSpeaking();
+      isSpeaking = false;
+      playBeep();
+      return true;
+    case 'copy':
+      await typerService.copy();
+      playBeep();
+      return true;
+    case 'paste':
+      await typerService.paste();
+      playBeep();
+      return true;
+    case 'cut':
+      await typerService.cut();
+      playBeep();
+      return true;
+    case 'select_all':
+      await typerService.selectAll();
+      playBeep();
+      return true;
+    case 'save':
+      await typerService.save();
+      playBeep();
+      return true;
+    case 'find':
+      await typerService.find();
+      playBeep();
+      return true;
+    case 'new_tab':
+      await typerService.newTab();
+      playBeep();
+      return true;
+    case 'close_tab':
+      await typerService.closeTab();
+      playBeep();
+      return true;
+    case 'new_window':
+      await typerService.newWindow();
+      playBeep();
+      return true;
+    case 'stop_listening':
+      if (currentConfig) {
+        stopSession(currentConfig);
+      }
+      return true;
+    case 'tts_on':
+      exec('touch /tmp/claude-auto-speak', () => {});
+      console.log(chalk.green('[TTS] Text-to-speech ON'));
+      playBeep();
+      return true;
+    case 'tts_off':
+      exec('rm -f /tmp/claude-auto-speak', () => {});
+      console.log(chalk.yellow('[TTS] Text-to-speech OFF'));
+      playBeep();
+      return true;
+    case 'claude_resume':
+      if (isInitMode) {
+        playBeep();
+        exec('osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\'', () => {});
+        isInitMode = false;
+      }
+      return true;
+    case 'claude_fresh':
+      if (isInitMode) {
+        playBeep();
+        exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
+        isInitMode = false;
+      }
+      return true;
+    case 'mode_general':
+      currentMode = 'general';
+      stopClaudeModeWatcher();
+      if (addonLoader) addonLoader.deactivate();
+      console.log(chalk.green.bold('[mode] Switched to GENERAL mode'));
+      playBeep();
+      return true;
+    case 'mode_claude':
+      currentMode = 'claude';
+      if (addonLoader) addonLoader.deactivate();
+      startClaudeModeWatcher(currentConfig);
+      console.log(chalk.cyan.bold('[mode] Switched to CLAUDE mode - listening pauses after submit, resumes after response'));
+      playBeep();
+      return true;
+    default:
+      return false;
+  }
 }
 
 function startSession(config) {
@@ -587,9 +540,10 @@ function startSession(config) {
       }
     }
 
-    // In Ableton mode, check dynamic patterns first (tempo 120, scene 1, etc.)
-    if (currentMode === 'ableton') {
-      for (const { pattern, action, extract } of ABLETON_PATTERNS) {
+    // In addon mode, check dynamic patterns first (tempo 120, scene 1, etc.)
+    if (currentMode === 'addon') {
+      const patterns = getActivePatterns();
+      for (const { pattern, action, extract } of patterns) {
         const match = cleanText.match(pattern);
         if (match) {
           // Clear any pending
@@ -603,52 +557,15 @@ function startSession(config) {
           }
 
           const value = extract(match);
-          console.log(chalk.magenta(`[ableton] ${action} → ${value}`));
-          playBeep();
+          const addonMeta = addonLoader.getActiveMetadata();
+          console.log(chalk.magenta(`[${addonMeta?.name || 'addon'}] ${action} → ${JSON.stringify(value)}`));
 
-          switch (action) {
-            case 'ableton_tempo':
-              abletonService.setTempo(value);
-              break;
-            case 'ableton_scene':
-              abletonService.fireScene(value);
-              break;
-            case 'ableton_mute':
-              abletonService.muteTrack(value);
-              break;
-            case 'ableton_unmute':
-              abletonService.unmuteTrack(value);
-              break;
-            case 'ableton_solo':
-              abletonService.soloTrack(value);
-              break;
-            case 'ableton_unsolo':
-              abletonService.unsoloTrack(value);
-              break;
-            case 'ableton_arm':
-              abletonService.armTrack(value);
-              break;
-            case 'ableton_disarm':
-              abletonService.disarmTrack(value);
-              break;
-            case 'ableton_select_track':
-              abletonService.selectTrack(value);
-              break;
-            case 'ableton_volume':
-              abletonService.setTrackVolume(value.track, value.volume);
-              break;
-            case 'ableton_delete_track':
-              abletonService.deleteTrack(value);
-              break;
-            case 'ableton_duplicate_track':
-              abletonService.duplicateTrack(value);
-              break;
-            case 'ableton_delete_scene':
-              abletonService.deleteScene(value);
-              break;
-            case 'ableton_duplicate_scene':
-              abletonService.duplicateScene(value);
-              break;
+          const result = addonLoader.executeAction(action, value);
+          if (result === true) {
+            playBeep();
+          } else if (typeof result === 'string') {
+            // Delegate to general action
+            await executeGeneralAction(result);
           }
           return;
         }
@@ -695,209 +612,42 @@ function startSession(config) {
       // Execute the command
       console.log(chalk.cyan(`[voice command] "${cleanText}" → ${action}`));
 
-      switch (action) {
-        // Mode switching
-        case 'mode_general':
-          currentMode = 'general';
-          stopClaudeModeWatcher();
-          console.log(chalk.green.bold('[mode] Switched to GENERAL mode'));
-          playBeep();
-          break;
-        case 'mode_ableton':
-          currentMode = 'ableton';
-          stopClaudeModeWatcher();
-          abletonService.connect();
-          console.log(chalk.magenta.bold('[mode] Switched to ABLETON mode (push-to-talk: Cmd+Option)'));
-          playBeep();
-          // In music mode, stop listening by default - use push-to-talk (Cmd+Option)
-          if (currentConfig) {
-            stopSession(currentConfig);
-          }
-          break;
-        case 'mode_claude':
-          currentMode = 'claude';
-          startClaudeModeWatcher(currentConfig);
-          console.log(chalk.cyan.bold('[mode] Switched to CLAUDE mode - listening pauses after submit, resumes after response'));
-          playBeep();
-          break;
+      // Check for addon mode switch commands
+      if (action.startsWith('mode_addon_')) {
+        const addonName = action.replace('mode_addon_', '');
+        currentMode = 'addon';
+        stopClaudeModeWatcher();
+        addonLoader.activate(addonName);
+        playBeep();
 
-        // General commands
-        case 'enter':
-          await typerService.pressEnter();
-          typedHistory.length = 0;
-          playBeep();
-          // In Claude mode, pause listening after submit - will resume when response is done
-          if (currentMode === 'claude' && currentConfig) {
-            console.log(chalk.cyan('[claude mode] Pausing listening - waiting for response...'));
-            stopSession(currentConfig);
-          }
-          break;
-        case 'clear_all':
-          await typerService.clearAll();
-          typedHistory.length = 0;
-          playBeep();
-          break;
-        case 'stop_speak':
-          await typerService.stopSpeaking();
-          isSpeaking = false;
-          playBeep();
-          break;
-        case 'copy':
-          await typerService.copy();
-          playBeep();
-          break;
-        case 'paste':
-          await typerService.paste();
-          playBeep();
-          break;
-        case 'cut':
-          await typerService.cut();
-          playBeep();
-          break;
-        case 'select_all':
-          await typerService.selectAll();
-          playBeep();
-          break;
-        case 'save':
-          await typerService.save();
-          playBeep();
-          break;
-        case 'find':
-          await typerService.find();
-          playBeep();
-          break;
-        case 'new_tab':
-          await typerService.newTab();
-          playBeep();
-          break;
-        case 'close_tab':
-          await typerService.closeTab();
-          playBeep();
-          break;
-        case 'new_window':
-          await typerService.newWindow();
-          playBeep();
-          break;
-        case 'stop_listening':
-          if (currentConfig) {
-            stopSession(currentConfig);
-          }
-          break;
-        case 'tts_on':
-          exec('touch /tmp/claude-auto-speak', () => {});
-          console.log(chalk.green('[TTS] Text-to-speech ON'));
-          playBeep();
-          break;
-        case 'tts_off':
-          exec('rm -f /tmp/claude-auto-speak', () => {});
-          console.log(chalk.yellow('[TTS] Text-to-speech OFF'));
-          playBeep();
-          break;
-        case 'claude_resume':
-          if (isInitMode) {
-            playBeep();
-            exec('osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\'', () => {});
-            isInitMode = false;
-          }
-          break;
-        case 'claude_fresh':
-          if (isInitMode) {
-            playBeep();
-            exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
-            isInitMode = false;
-          }
-          break;
-
-        // Ableton commands
-        case 'ableton_play':
-          abletonService.play();
-          playBeep();
-          break;
-        case 'ableton_stop':
-          abletonService.stop();
-          playBeep();
-          break;
-        case 'ableton_continue':
-          abletonService.continue();
-          playBeep();
-          break;
-        case 'ableton_record':
-          abletonService.record();
-          playBeep();
-          break;
-        case 'ableton_overdub':
-          abletonService.overdub();
-          playBeep();
-          break;
-        case 'ableton_tap':
-          abletonService.tapTempo();
-          playBeep();
-          break;
-        case 'ableton_undo':
-          abletonService.undo();
-          playBeep();
-          break;
-        case 'ableton_redo':
-          abletonService.redo();
-          playBeep();
-          break;
-        case 'ableton_metronome_on':
-          abletonService.metronomeOn();
-          playBeep();
-          break;
-        case 'ableton_metronome_off':
-          abletonService.metronomeOff();
-          playBeep();
-          break;
-        case 'ableton_metronome_toggle':
-          abletonService.toggleMetronome();
-          playBeep();
-          break;
-        case 'ableton_loop_on':
-          abletonService.loopOn();
-          playBeep();
-          break;
-        case 'ableton_loop_off':
-          abletonService.loopOff();
-          playBeep();
-          break;
-        case 'ableton_loop_toggle':
-          abletonService.toggleLoop();
-          playBeep();
-          break;
-        case 'ableton_stop_all':
-          abletonService.stopAllClips();
-          playBeep();
-          break;
-        case 'ableton_next_cue':
-          abletonService.jumpToNextCue();
-          playBeep();
-          break;
-        case 'ableton_prev_cue':
-          abletonService.jumpToPrevCue();
-          playBeep();
-          break;
-        case 'ableton_create_audio':
-          abletonService.createAudioTrack();
-          playBeep();
-          break;
-        case 'ableton_create_midi':
-          abletonService.createMidiTrack();
-          playBeep();
-          break;
-        case 'ableton_create_return':
-          abletonService.createReturnTrack();
-          playBeep();
-          break;
-        case 'ableton_create_scene':
-          abletonService.createScene();
-          playBeep();
-          break;
-        case 'ableton_capture':
-          abletonService.captureMidi();
-          playBeep();
-          break;
+        // If addon has push-to-talk enabled, stop listening
+        if (addonLoader.isPushToTalkEnabled() && currentConfig) {
+          const meta = addonLoader.getActiveMetadata();
+          console.log(chalk.dim(`[${meta?.displayName || addonName}] Push-to-talk mode: Cmd+Option to speak`));
+          stopSession(currentConfig);
+        }
+        isInitMode = false;
+        return;
       }
+
+      // Try general action first
+      const handled = await executeGeneralAction(action);
+      if (handled) {
+        isInitMode = false;
+        return;
+      }
+
+      // Try addon action
+      if (currentMode === 'addon' && addonLoader) {
+        const result = addonLoader.executeAction(action, null);
+        if (result === true) {
+          playBeep();
+        } else if (typeof result === 'string') {
+          // Delegate to general action (e.g., 'find' returns 'find' to use typerService)
+          await executeGeneralAction(result);
+        }
+      }
+
       // After any command, disable init mode
       isInitMode = false;
       return;
@@ -1005,13 +755,20 @@ async function startApplication(config, options = {}) {
   }
   await config.ensureDeepgramApiKey();
 
-  initializeServices(config);
+  await initializeServices(config);
 
   process.on('SIGINT', () => {
     stopSession(config);
     hotkeyService.stop();
+    if (addonLoader) addonLoader.deactivate();
     process.exit(0);
   });
+
+  // List available addons
+  const addons = addonLoader.list();
+  if (addons.length > 0) {
+    console.log(chalk.dim(`Addons: ${addons.map(a => a.displayName || a.name).join(', ')}`));
+  }
 
   console.log(`Ready. Press ${config.formatHotkey()} to speak. Ctrl+C to quit.`);
   console.log(chalk.dim('As you speak, transcription will appear in real time at your cursor, so place it where you want to type.'));
@@ -1043,10 +800,11 @@ async function startApplication(config, options = {}) {
     }, 800);
   });
 
-  // Push-to-talk for music mode: Cmd+Option held = listen, released = submit
+  // Push-to-talk for addon modes: Cmd+Option held = listen, released = submit
   hotkeyService.on('push_to_talk_start', () => {
-    if (currentMode === 'ableton') {
-      console.log(chalk.magenta('[push-to-talk] Cmd+Option pressed - starting to listen'));
+    if (currentMode === 'addon' && addonLoader && addonLoader.isPushToTalkEnabled()) {
+      const meta = addonLoader.getActiveMetadata();
+      console.log(chalk.magenta(`[push-to-talk] Cmd+Option pressed - starting to listen`));
       if (!sessionActive) {
         startSession(config);
       }
@@ -1054,8 +812,9 @@ async function startApplication(config, options = {}) {
   });
 
   hotkeyService.on('push_to_talk_end', async () => {
-    if (currentMode === 'ableton' && sessionActive) {
-      console.log(chalk.magenta('[push-to-talk] Cmd+Option released - submitting'));
+    if (currentMode === 'addon' && addonLoader && addonLoader.isPushToTalkEnabled() && sessionActive) {
+      const meta = addonLoader.getActiveMetadata();
+      console.log(chalk.magenta(`[push-to-talk] Cmd+Option released - submitting`));
 
       // Type any pending text first
       if (pendingTimeout) {
@@ -1067,9 +826,11 @@ async function startApplication(config, options = {}) {
         pendingText = '';
       }
 
-      // Simulate affirmative (press Enter)
-      await typerService.pressEnter();
-      playBeep();
+      // Auto-submit if enabled for this addon
+      if (addonLoader.isPushToTalkAutoSubmit()) {
+        await typerService.pressEnter();
+        playBeep();
+      }
 
       // Stop listening
       stopSession(config);
