@@ -19,12 +19,27 @@
 #    }
 # 6. Create control file to enable: touch /tmp/claude-auto-speak
 #    Or toggle with speech2type's Cmd+' hotkey
+#
+# Configuration (optional):
+#   Set TTS_VOLUME environment variable (0.0 to 1.0, default: 0.3)
+#   Set TTS_SPEED environment variable (default: 0.55, lower = slower)
+#   Set TTS_PITCH environment variable (default: 0.85, lower = deeper)
+#
+#   Example: Add to ~/.zshrc:
+#     export TTS_VOLUME=0.4
+#     export TTS_SPEED=0.6
+#     export TTS_PITCH=0.9
 
 # Check if auto-speak is enabled (control file)
 CONTROL_FILE="/tmp/claude-auto-speak"
 if [[ ! -f "$CONTROL_FILE" ]]; then
     exit 0
 fi
+
+# TTS settings (configurable via environment variables)
+TTS_VOLUME="${TTS_VOLUME:-0.3}"
+TTS_SPEED="${TTS_SPEED:-0.55}"
+TTS_PITCH="${TTS_PITCH:-0.85}"
 
 # Read JSON from stdin
 INPUT=$(cat)
@@ -96,8 +111,8 @@ try:
     # Remove markdown formatting
     last_assistant_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', last_assistant_text)  # **bold**
     last_assistant_text = re.sub(r'\*([^*]+)\*', r'\1', last_assistant_text)  # *italic*
-    last_assistant_text = re.sub(r'`[^`]+`', '', last_assistant_text)  # `code`
-    last_assistant_text = re.sub(r'```[\s\S]*?```', '', last_assistant_text)  # code blocks
+    last_assistant_text = re.sub(r'\`[^\`]+\`', '', last_assistant_text)  # `code`
+    last_assistant_text = re.sub(r'\`\`\`[\s\S]*?\`\`\`', '', last_assistant_text)  # code blocks
     last_assistant_text = re.sub(r'^#{1,6}\s+', '', last_assistant_text, flags=re.MULTILINE)  # headers
     last_assistant_text = re.sub(r'^\s*[-*+]\s+', '', last_assistant_text, flags=re.MULTILINE)  # bullet points
     last_assistant_text = re.sub(r'^\s*\d+\.\s+', '', last_assistant_text, flags=re.MULTILINE)  # numbered lists
@@ -123,9 +138,9 @@ if [[ -n "$TRANSCRIPT" ]]; then
     TMP_WAV="/tmp/claude-tts-$$.wav"
 
     if [[ -x "$PIPER_BIN" && -f "$PIPER_MODEL" ]]; then
-        # Generate faster (0.55 length_scale), play at lower rate for deeper pitch (0.85)
-        echo "$TRANSCRIPT" | "$PIPER_BIN" --model "$PIPER_MODEL" --length_scale 0.55 --output_file "$TMP_WAV" 2>/dev/null
-        afplay -r 0.85 "$TMP_WAV"
+        # Generate with configurable speed, play with configurable pitch and volume
+        echo "$TRANSCRIPT" | "$PIPER_BIN" --model "$PIPER_MODEL" --length_scale "$TTS_SPEED" --output_file "$TMP_WAV" 2>/dev/null
+        afplay -v "$TTS_VOLUME" -r "$TTS_PITCH" "$TMP_WAV"
         rm -f "$TMP_WAV"
     else
         # Fallback to macOS say command if Piper not available
