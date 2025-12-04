@@ -32,6 +32,13 @@ const APP_SWITCH_PATTERNS = [
   /^(?:focus|switch to|go to|open)\s+(.+)$/i,
 ];
 
+// Terminal window switching patterns
+// "terminal 1", "terminal 2", "window 1", "terminal window 1"
+const TERMINAL_INDEX_PATTERN = /^(?:terminal|window|terminal window)\s*(\d+)$/i;
+
+// "terminal claude", "terminal ssh", "window with claude"
+const TERMINAL_NAME_PATTERN = /^(?:terminal|window|terminal window)\s+(?:with\s+)?(.+)$/i;
+
 // Common app name aliases
 const APP_ALIASES = {
   'terminal': 'Terminal',
@@ -129,9 +136,50 @@ function startSession(config) {
     // Log what we received for debugging
     console.log(chalk.dim(`[transcript] "${text}" → clean: "${cleanText}"`));
 
-    // Check for app switching commands first (e.g., "focus terminal", "switch to chrome")
+    // Check for Terminal window switching by index (e.g., "terminal 1", "window 2")
+    const terminalIndexMatch = cleanText.match(TERMINAL_INDEX_PATTERN);
+    if (terminalIndexMatch) {
+      // Clear any pending
+      if (pendingTimeout) {
+        clearTimeout(pendingTimeout);
+        pendingTimeout = null;
+      }
+      if (pendingText) {
+        await typerService.typeText(pendingText + ' ');
+        pendingText = '';
+      }
+
+      const windowIndex = parseInt(terminalIndexMatch[1], 10);
+      console.log(chalk.green(`[terminal switch] window index ${windowIndex}`));
+      await typerService.focusTerminalWindow(windowIndex);
+      return;
+    }
+
+    // Check for Terminal window switching by name (e.g., "terminal claude", "window ssh")
+    const terminalNameMatch = cleanText.match(TERMINAL_NAME_PATTERN);
+    if (terminalNameMatch) {
+      const searchTerm = terminalNameMatch[1];
+      // Skip if it's just a number (handled above) or a generic app name
+      if (!/^\d+$/.test(searchTerm) && !APP_ALIASES[searchTerm]) {
+        // Clear any pending
+        if (pendingTimeout) {
+          clearTimeout(pendingTimeout);
+          pendingTimeout = null;
+        }
+        if (pendingText) {
+          await typerService.typeText(pendingText + ' ');
+          pendingText = '';
+        }
+
+        console.log(chalk.green(`[terminal switch] searching for "${searchTerm}"`));
+        await typerService.focusTerminalByName(searchTerm);
+        return;
+      }
+    }
+
+    // Check for app switching commands (e.g., "focus terminal", "switch to chrome")
     for (const pattern of APP_SWITCH_PATTERNS) {
-      const match = lowerText.match(pattern);
+      const match = cleanText.match(pattern);
       if (match) {
         // Clear any pending
         if (pendingTimeout) {

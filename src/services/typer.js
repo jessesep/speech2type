@@ -229,6 +229,108 @@ class TyperService {
       return [];
     }
   }
+
+  /**
+   * Switch to a specific Terminal window by index (1-based)
+   */
+  TERMINAL_WINDOW_INDEX_SCRIPT = `
+  on run argv
+    if (count of argv) is 0 then error number -50
+    set windowIndex to (item 1 of argv as number)
+    tell application "Terminal"
+      activate
+      if windowIndex ≤ (count of windows) then
+        set index of window windowIndex to 1
+      end if
+    end tell
+  end run`;
+
+  async focusTerminalWindow(windowIndex) {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.TERMINAL_WINDOW_INDEX_SCRIPT, String(windowIndex)],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug(`[typer] Focused Terminal window ${windowIndex}`);
+      return true;
+    } catch (error) {
+      console.error(`[typer] Error focusing Terminal window ${windowIndex}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Switch to a Terminal window by name/keyword search
+   */
+  TERMINAL_WINDOW_NAME_SCRIPT = `
+  on run argv
+    if (count of argv) is 0 then error number -50
+    set searchTerm to item 1 of argv
+    tell application "Terminal"
+      activate
+      set theWindows to every window whose name contains searchTerm
+      if (count of theWindows) > 0 then
+        set index of item 1 of theWindows to 1
+      end if
+    end tell
+  end run`;
+
+  async focusTerminalByName(searchTerm) {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.TERMINAL_WINDOW_NAME_SCRIPT, searchTerm],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug(`[typer] Focused Terminal window containing "${searchTerm}"`);
+      return true;
+    } catch (error) {
+      console.error(`[typer] Error focusing Terminal by name "${searchTerm}":`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get list of Terminal window names
+   */
+  async getTerminalWindows() {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', 'tell application "Terminal" to get name of every window'],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      return result.trim().split(', ');
+    } catch (error) {
+      console.error('[typer] Error getting Terminal windows:', error);
+      return [];
+    }
+  }
 }
 
 export { TyperService };
