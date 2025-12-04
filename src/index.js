@@ -473,7 +473,7 @@ async function startApplication(config) {
 
   console.log(`Ready. Press ${config.formatHotkey()} to speak. Ctrl+C to quit.`);
   console.log(chalk.dim('As you speak, transcription will appear in real time at your cursor, so place it where you want to type.'));
-  console.log(chalk.dim('Press CMD+SHIFT+; to toggle auto-read mode for Claude responses.'));
+  console.log(chalk.dim("Press CMD+' to toggle auto-read mode for Claude responses."));
   hotkeyService.on('toggle', () => (sessionActive ? stopSession(config) : startSession(config)));
   hotkeyService.on('toggle_auto_read', () => {
     // Toggle the Claude auto-speak control file

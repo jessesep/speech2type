@@ -18,9 +18,9 @@ class HotkeyService extends EventEmitter {
     const primaryMods = this.hotkeyConfig ? this.hotkeyConfig.modifiers.join('+') : 'cmd';
     const primaryKey = this.hotkeyConfig ? this.hotkeyConfig.key : ';';
 
-    // Secondary hotkey: Cmd+Shift+; for toggle auto-read
-    const secondaryMods = 'cmd+shift';
-    const secondaryKey = ';';
+    // Secondary hotkey: Cmd+' for toggle auto-read
+    const secondaryMods = 'cmd';
+    const secondaryKey = "'";
 
     const args = [primaryMods, primaryKey, secondaryMods, secondaryKey];
 
