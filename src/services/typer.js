@@ -213,6 +213,424 @@ class TyperService extends EventEmitter {
   }
 
   /**
+   * Copy selection to clipboard (Cmd+C)
+   */
+  COPY_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "c" using {command down}
+    end tell
+  end run`;
+
+  async copy() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.COPY_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Copied to clipboard');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error copying:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Paste from clipboard (Cmd+V)
+   */
+  PASTE_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "v" using {command down}
+    end tell
+  end run`;
+
+  async paste() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.PASTE_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Pasted from clipboard');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error pasting:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Cut selection to clipboard (Cmd+X)
+   */
+  CUT_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "x" using {command down}
+    end tell
+  end run`;
+
+  async cut() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.CUT_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Cut to clipboard');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error cutting:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Select all (Cmd+A)
+   */
+  SELECT_ALL_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "a" using {command down}
+    end tell
+  end run`;
+
+  async selectAll() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.SELECT_ALL_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Selected all');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error selecting all:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Save (Cmd+S)
+   */
+  async save() {
+    return this.execKeystroke('s', ['command down']);
+  }
+
+  /**
+   * Find (Cmd+F)
+   */
+  async find() {
+    return this.execKeystroke('f', ['command down']);
+  }
+
+  /**
+   * New Tab (Cmd+T)
+   */
+  async newTab() {
+    return this.execKeystroke('t', ['command down']);
+  }
+
+  /**
+   * Close Tab (Cmd+W)
+   */
+  async closeTab() {
+    return this.execKeystroke('w', ['command down']);
+  }
+
+  /**
+   * New Window (Cmd+N)
+   */
+  async newWindow() {
+    return this.execKeystroke('n', ['command down']);
+  }
+
+  /**
+   * Helper to execute a keystroke with modifiers
+   */
+  async execKeystroke(key, modifiers = []) {
+    const modString = modifiers.length > 0 ? ` using {${modifiers.join(', ')}}` : '';
+    const script = `tell application "System Events" to keystroke "${key}"${modString}`;
+    try {
+      await new Promise((resolve, reject) => {
+        execFile('/usr/bin/osascript', ['-e', script], { maxBuffer: 1024 * 1024 }, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+      console.debug(`[typer] Keystroke: ${key} with ${modifiers.join('+') || 'no modifiers'}`);
+      return true;
+    } catch (error) {
+      console.error(`[typer] Error keystroke ${key}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Select current word (Option+Shift+Left then Option+Shift+Right)
+   */
+  SELECT_WORD_SCRIPT = `
+  on run
+    tell application "System Events"
+      key code 123 using {option down, shift down}
+      key code 124 using {option down, shift down}
+    end tell
+  end run`;
+
+  async selectWord() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.SELECT_WORD_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Selected word');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error selecting word:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Select current line (Cmd+Shift+Left then Cmd+Shift+Right)
+   */
+  SELECT_LINE_SCRIPT = `
+  on run
+    tell application "System Events"
+      key code 123 using {command down, shift down}
+      key code 124 using {command down, shift down}
+    end tell
+  end run`;
+
+  async selectLine() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.SELECT_LINE_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Selected line');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error selecting line:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Press arrow keys
+   */
+  async pressArrow(direction) {
+    // Key codes: up=126, down=125, left=123, right=124
+    const keyCodes = { up: 126, down: 125, left: 123, right: 124 };
+    const keyCode = keyCodes[direction];
+    if (!keyCode) return false;
+    try {
+      await this.execKeyCode(keyCode);
+      console.debug(`[typer] Pressed arrow ${direction}`);
+      return true;
+    } catch (error) {
+      console.error(`[typer] Error pressing arrow ${direction}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Press Home (Cmd+Left)
+   */
+  HOME_SCRIPT = `
+  on run
+    tell application "System Events"
+      key code 123 using {command down}
+    end tell
+  end run`;
+
+  async pressHome() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.HOME_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Pressed Home');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error pressing Home:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Press End (Cmd+Right)
+   */
+  END_SCRIPT = `
+  on run
+    tell application "System Events"
+      key code 124 using {command down}
+    end tell
+  end run`;
+
+  async pressEnd() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.END_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Pressed End');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error pressing End:', error);
+      return false;
+    }
+  }
+
+  /**
+   * System Undo (Cmd+Z)
+   */
+  UNDO_SYSTEM_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "z" using {command down}
+    end tell
+  end run`;
+
+  async undoSystem() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.UNDO_SYSTEM_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] System undo');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error system undo:', error);
+      return false;
+    }
+  }
+
+  /**
+   * System Redo (Cmd+Shift+Z)
+   */
+  REDO_SYSTEM_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "z" using {command down, shift down}
+    end tell
+  end run`;
+
+  async redoSystem() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.REDO_SYSTEM_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) return reject(err);
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] System redo');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error system redo:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Press Delete (forward delete)
+   */
+  async pressDelete() {
+    try {
+      await this.execKeyCode(117); // Forward delete key code
+      console.debug('[typer] Pressed Delete');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error pressing Delete:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Press Tab
+   */
+  async pressTab() {
+    try {
+      await this.execKeyCode(48); // Tab key code
+      console.debug('[typer] Pressed Tab');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error pressing Tab:', error);
+      return false;
+    }
+  }
+
+  /**
    * Execute a key code via AppleScript
    */
   KEYCODE_SCRIPT = `

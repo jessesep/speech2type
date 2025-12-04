@@ -34,26 +34,45 @@ const CLIPBOARD_WATCH_MS = 500; // Check clipboard every 500ms
 
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
-  // Primary command - "affirmative" with all punctuation variations handled by stripPunctuation()
+  // Submit / Enter
   'affirmative': 'enter',
+  'computer enter': 'enter',
+  'computer submit': 'enter',
 
-  // Undo/delete last chunk - only "retract" (all punctuation variations handled by stripPunctuation)
+  // Undo last spoken chunk
   'retract': 'undo',
+  'computer undo': 'undo',
 
-  // Clear entire input field - "retract everything confirm"
-  'retract everything confirm': 'clear_all',
-  'retract everything confirmed': 'clear_all',
+  // Clear entire input field
+  'computer scratch': 'clear_all',
+  'computer scratch all': 'clear_all',
+  'computer scratch that': 'clear_all',
 
-  // Text-to-speech commands - read clipboard aloud
-  'read it': 'speak',
-  'read that': 'speak',
-  'speak': 'speak',
-  'read aloud': 'speak',
-  'read clipboard': 'speak',
+  // Clipboard operations
+  'computer copy': 'copy',
+  'computer paste': 'paste',
+  'computer cut': 'cut',
 
-  // Stop speaking
-  'silence': 'stop_speak',
+  // Selection
+  'computer select all': 'select_all',
+
+  // Common shortcuts
+  'computer save': 'save',
+  'computer find': 'find',
+  'computer new tab': 'new_tab',
+  'computer close tab': 'close_tab',
+  'computer new window': 'new_window',
 };
+
+// Play a soft beep for audio feedback
+function playBeep() {
+  exec('afplay -v 0.3 /System/Library/Sounds/Pop.aiff &', () => {});
+}
+
+// Play a subtle typing sound when text is transcribed
+function playTypingSound() {
+  exec('afplay -v 0.15 /System/Library/Sounds/Tink.aiff &', () => {});
+}
 
 // Auto-read state
 let autoReadEnabled = false;
@@ -318,6 +337,7 @@ function startSession(config) {
         } else {
           console.log(chalk.yellow(`[undo] Nothing to undo`));
         }
+        playBeep();
         return;
       }
 
@@ -336,29 +356,54 @@ function startSession(config) {
       switch (action) {
         case 'enter':
           await typerService.pressEnter();
-          typedHistory.length = 0; // Clear history after enter
-          break;
-        case 'newline':
-          await typerService.insertNewline();
-          break;
-        case 'escape':
-          await typerService.pressEscape();
+          typedHistory.length = 0;
+          playBeep();
           break;
         case 'clear_all':
-          console.log(chalk.yellow('[clear] Clearing entire input field'));
           await typerService.clearAll();
-          typedHistory.length = 0; // Clear history since all text is gone
-          break;
-        case 'speak':
-          console.log(chalk.magenta('[tts] Reading clipboard aloud...'));
-          isSpeaking = true;
-          await typerService.speakClipboard();
-          isSpeaking = false;
+          typedHistory.length = 0;
+          playBeep();
           break;
         case 'stop_speak':
-          console.log(chalk.magenta('[tts] Stopping speech...'));
           await typerService.stopSpeaking();
           isSpeaking = false;
+          playBeep();
+          break;
+        case 'copy':
+          await typerService.copy();
+          playBeep();
+          break;
+        case 'paste':
+          await typerService.paste();
+          playBeep();
+          break;
+        case 'cut':
+          await typerService.cut();
+          playBeep();
+          break;
+        case 'select_all':
+          await typerService.selectAll();
+          playBeep();
+          break;
+        case 'save':
+          await typerService.save();
+          playBeep();
+          break;
+        case 'find':
+          await typerService.find();
+          playBeep();
+          break;
+        case 'new_tab':
+          await typerService.newTab();
+          playBeep();
+          break;
+        case 'close_tab':
+          await typerService.closeTab();
+          playBeep();
+          break;
+        case 'new_window':
+          await typerService.newWindow();
+          playBeep();
           break;
       }
       return;
@@ -411,6 +456,7 @@ function startSession(config) {
       if (pendingText && sessionActive) {
         const typedText = pendingText + ' ';
         await typerService.typeText(typedText);
+        playTypingSound();
         // Add to undo history
         typedHistory.push(typedText.length);
         if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
