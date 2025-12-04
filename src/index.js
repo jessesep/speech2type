@@ -37,26 +37,12 @@ const VOICE_COMMANDS = {
   // Primary command - "affirmative" with all punctuation variations handled by stripPunctuation()
   'affirmative': 'enter',
 
-  // Undo/delete last chunk - distinctive words that won't appear in normal speech
-  'disregard': 'undo',
-  'scratch that': 'undo',
-  'belay that': 'undo',        // nautical term, very distinctive
+  // Undo/delete last chunk - only "retract" (all punctuation variations handled by stripPunctuation)
   'retract': 'undo',
-  'undo': 'undo',
 
-  // Clear entire input field - all variations of "retract everything confirm"
+  // Clear entire input field - "retract everything confirm"
   'retract everything confirm': 'clear_all',
   'retract everything confirmed': 'clear_all',
-  'retract all confirm': 'clear_all',
-  'retract all confirmed': 'clear_all',
-  'clear everything confirm': 'clear_all',
-  'clear everything confirmed': 'clear_all',
-  'clear all confirm': 'clear_all',
-  'clear all confirmed': 'clear_all',
-  'delete everything confirm': 'clear_all',
-  'delete everything confirmed': 'clear_all',
-  'delete all confirm': 'clear_all',
-  'delete all confirmed': 'clear_all',
 
   // Text-to-speech commands - read clipboard aloud
   'read it': 'speak',
@@ -66,18 +52,7 @@ const VOICE_COMMANDS = {
   'read clipboard': 'speak',
 
   // Stop speaking
-  'stop reading': 'stop_speak',
   'silence': 'stop_speak',
-  'quiet': 'stop_speak',
-  'shut up': 'stop_speak',
-  'hush': 'stop_speak',
-
-  // Auto-read mode toggle
-  'auto read': 'auto_read_on',
-  'auto read on': 'auto_read_on',
-  'start auto read': 'auto_read_on',
-  'auto read off': 'auto_read_off',
-  'stop auto read': 'auto_read_off',
 };
 
 // Auto-read state
@@ -385,16 +360,6 @@ function startSession(config) {
           await typerService.stopSpeaking();
           isSpeaking = false;
           break;
-        case 'auto_read_on':
-          autoReadEnabled = true;
-          startClipboardWatch();
-          console.log(chalk.magenta('[tts] Auto-read enabled - will read new clipboard content'));
-          break;
-        case 'auto_read_off':
-          autoReadEnabled = false;
-          stopClipboardWatch();
-          console.log(chalk.magenta('[tts] Auto-read disabled'));
-          break;
       }
       return;
     }
@@ -508,7 +473,21 @@ async function startApplication(config) {
 
   console.log(`Ready. Press ${config.formatHotkey()} to speak. Ctrl+C to quit.`);
   console.log(chalk.dim('As you speak, transcription will appear in real time at your cursor, so place it where you want to type.'));
+  console.log(chalk.dim('Press CMD+SHIFT+; to toggle auto-read mode for Claude responses.'));
   hotkeyService.on('toggle', () => (sessionActive ? stopSession(config) : startSession(config)));
+  hotkeyService.on('toggle_auto_read', () => {
+    // Toggle the Claude auto-speak control file
+    const controlFile = '/tmp/claude-auto-speak';
+    if (existsSync(controlFile)) {
+      // Disable auto-speak
+      exec(`rm -f ${controlFile}; killall say 2>/dev/null`, () => {});
+      console.log(chalk.magenta('[auto-read] Claude auto-speak DISABLED'));
+    } else {
+      // Enable auto-speak
+      exec(`touch ${controlFile}`, () => {});
+      console.log(chalk.magenta('[auto-read] Claude auto-speak ENABLED'));
+    }
+  });
   hotkeyService.start();
 }
 

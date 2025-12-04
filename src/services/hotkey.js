@@ -14,7 +14,15 @@ class HotkeyService extends EventEmitter {
   start() {
     if (this.proc) return;
 
-    const args = this.hotkeyConfig ? [this.hotkeyConfig.modifiers.join('+'), this.hotkeyConfig.key] : [];
+    // Primary hotkey args
+    const primaryMods = this.hotkeyConfig ? this.hotkeyConfig.modifiers.join('+') : 'cmd';
+    const primaryKey = this.hotkeyConfig ? this.hotkeyConfig.key : ';';
+
+    // Secondary hotkey: Cmd+Shift+; for toggle auto-read
+    const secondaryMods = 'cmd+shift';
+    const secondaryKey = ';';
+
+    const args = [primaryMods, primaryKey, secondaryMods, secondaryKey];
 
     this.proc = spawn(this.hotkeyBin, args, {
       stdio: ['ignore', 'pipe', process.env.DEBUG ? 'inherit' : 'ignore'],
@@ -22,8 +30,11 @@ class HotkeyService extends EventEmitter {
 
     const rl = readline.createInterface({ input: this.proc.stdout });
     rl.on('line', (line) => {
-      if (line.trim() === 'TRIGGERED') {
+      const trimmed = line.trim();
+      if (trimmed === 'TRIGGERED') {
         this.emit('toggle');
+      } else if (trimmed === 'TOGGLE_AUTO_READ') {
+        this.emit('toggle_auto_read');
       }
     });
 

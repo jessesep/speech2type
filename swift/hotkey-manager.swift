@@ -12,6 +12,10 @@ var targetKeyCode: CGKeyCode = 40 // default: K on many layouts, but it's just a
 var requiredFlags: CGEventFlags = [.maskCommand, .maskShift]
 var isCapturing = false
 
+// Secondary hotkey for toggle auto-read (Cmd+Shift+;)
+var secondaryKeyCode: CGKeyCode? = nil
+var secondaryFlags: CGEventFlags = []
+
 // ---- Keyboard layout helpers ----
 
 private func currentKeyboardLayout() -> UnsafePointer<UCKeyboardLayout>? {
@@ -171,12 +175,25 @@ func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, re
                 print("TRIGGERED")
                 fflush(stdout)
             }
+            // Check secondary hotkey (toggle auto-read)
+            if let secKey = secondaryKeyCode, keycode == secKey && flags.contains(secondaryFlags) {
+                print("TOGGLE_AUTO_READ")
+                fflush(stdout)
+            }
         }
     }
     return Unmanaged.passUnretained(event)
 }
 
 // ---- Main ----
+
+func parseSecondaryHotkey(_ modifiers: String, _ key: String) -> Bool {
+    guard let mods = parseModifiers(modifiers) else { return false }
+    guard let (kc, implied) = parseKeyToken(key) else { return false }
+    secondaryFlags = mods.union(implied)
+    secondaryKeyCode = kc
+    return true
+}
 
 func main() {
     let args = CommandLine.arguments
@@ -195,12 +212,29 @@ func main() {
             exit(1)
         }
         fputs("[hotkey-manager] Listening for \(mods.uppercased()) + \(key.uppercased())...\n", stderr)
+    } else if args.count == 5 {
+        // Primary hotkey
+        let mods = args[1]
+        let key  = args[2]
+        guard parseHotkey(mods, key) else {
+            fputs("[hotkey-manager] Invalid primary hotkey.\n", stderr)
+            exit(1)
+        }
+        // Secondary hotkey (for toggle auto-read)
+        let mods2 = args[3]
+        let key2  = args[4]
+        guard parseSecondaryHotkey(mods2, key2) else {
+            fputs("[hotkey-manager] Invalid secondary hotkey.\n", stderr)
+            exit(1)
+        }
+        fputs("[hotkey-manager] Primary: \(mods.uppercased()) + \(key.uppercased())\n", stderr)
+        fputs("[hotkey-manager] Secondary (auto-read toggle): \(mods2.uppercased()) + \(key2.uppercased())\n", stderr)
     } else {
         fputs("[hotkey-manager] Usage:\n", stderr)
-        fputs("[hotkey-manager]   hotkey-manager                    - Listen for CMD+SHIFT+K (default)\n", stderr)
-        fputs("[hotkey-manager]   hotkey-manager --capture          - Capture key combination\n", stderr)
-        fputs("[hotkey-manager]   hotkey-manager <mods> <key>       - Mods: cmd|shift|alt|ctrl (e.g., cmd+shift)\n", stderr)
-        fputs("[hotkey-manager]                                     - Key : single character (e.g., ;) or numeric keycode (e.g., 53)\n", stderr)
+        fputs("[hotkey-manager]   hotkey-manager                              - Listen for CMD+SHIFT+K (default)\n", stderr)
+        fputs("[hotkey-manager]   hotkey-manager --capture                    - Capture key combination\n", stderr)
+        fputs("[hotkey-manager]   hotkey-manager <mods> <key>                 - Single hotkey\n", stderr)
+        fputs("[hotkey-manager]   hotkey-manager <mods> <key> <mods2> <key2>  - Primary + secondary hotkey\n", stderr)
         exit(1)
     }
 
