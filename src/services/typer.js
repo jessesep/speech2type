@@ -26,15 +26,14 @@ class TyperService {
 
   /**
    * WORKAROUND: macOS System Events drops the first keystroke using osascript.
-   * Solution: Type first character, delete it (backspace), then type full text.
-   * This activates System Events within the same execution context without side effects.
+   * Solution: Add a small delay before typing to let System Events "warm up".
+   * Alternative approach that's more reliable than the type-delete-retype method.
    */
   KEYSTROKE_SCRIPT = `
   on run argv
     if (count of argv) is 0 then error number -50
     tell application "System Events"
-      keystroke (character 1 of (item 1 of argv))
-      key code 51
+      delay 0.05
       keystroke (item 1 of argv)
     end tell
   end run`;
