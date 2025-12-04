@@ -415,6 +415,7 @@ function startSession(config) {
         typedHistory.push(typedText.length);
         if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
         pendingText = '';
+
       }
       pendingTimeout = null;
     }, COMMAND_WAIT_MS);

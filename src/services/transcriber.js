@@ -107,6 +107,12 @@ class TranscriberService extends EventEmitter {
 
       // Don't send audio to API while TTS is speaking (saves API costs)
       if (existsSync(TTS_LOCK_FILE)) {
+        // Send keepalive to prevent connection timeout
+        try {
+          this.dgConn.keepAlive();
+        } catch (e) {
+          // Ignore keepalive errors
+        }
         return;
       }
 
