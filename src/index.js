@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -20,6 +20,18 @@ const COMMAND_WAIT_MS = 400; // Wait this long to see if a command follows
 const typedHistory = [];
 const MAX_UNDO_HISTORY = 20; // Keep last 20 chunks
 
+// TTS state - pause transcription while speaking
+let isSpeaking = false;
+
+// Check if external TTS (Claude hook) is speaking
+const TTS_LOCK_FILE = '/tmp/claude-tts-speaking';
+import { existsSync } from 'fs';
+
+// Clipboard watching for auto-read
+let lastClipboardContent = '';
+let clipboardWatchInterval = null;
+const CLIPBOARD_WATCH_MS = 500; // Check clipboard every 500ms
+
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
   // Primary command - "affirmative" with all punctuation variations handled by stripPunctuation()
@@ -31,6 +43,20 @@ const VOICE_COMMANDS = {
   'belay that': 'undo',        // nautical term, very distinctive
   'retract': 'undo',
   'undo': 'undo',
+
+  // Clear entire input field - all variations of "retract everything confirm"
+  'retract everything confirm': 'clear_all',
+  'retract everything confirmed': 'clear_all',
+  'retract all confirm': 'clear_all',
+  'retract all confirmed': 'clear_all',
+  'clear everything confirm': 'clear_all',
+  'clear everything confirmed': 'clear_all',
+  'clear all confirm': 'clear_all',
+  'clear all confirmed': 'clear_all',
+  'delete everything confirm': 'clear_all',
+  'delete everything confirmed': 'clear_all',
+  'delete all confirm': 'clear_all',
+  'delete all confirmed': 'clear_all',
 
   // Text-to-speech commands - read clipboard aloud
   'read it': 'speak',
@@ -45,7 +71,66 @@ const VOICE_COMMANDS = {
   'quiet': 'stop_speak',
   'shut up': 'stop_speak',
   'hush': 'stop_speak',
+
+  // Auto-read mode toggle
+  'auto read': 'auto_read_on',
+  'auto read on': 'auto_read_on',
+  'start auto read': 'auto_read_on',
+  'auto read off': 'auto_read_off',
+  'stop auto read': 'auto_read_off',
 };
+
+// Auto-read state
+let autoReadEnabled = false;
+
+// Start watching clipboard for changes (auto-read feature)
+function startClipboardWatch() {
+  if (clipboardWatchInterval) return; // Already watching
+
+  // Get current clipboard content to establish baseline
+  execFile('/usr/bin/pbpaste', [], { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+    if (!err) {
+      lastClipboardContent = stdout;
+    }
+  });
+
+  clipboardWatchInterval = setInterval(async () => {
+    if (!autoReadEnabled || isSpeaking) return;
+
+    try {
+      const currentContent = await new Promise((resolve, reject) => {
+        execFile('/usr/bin/pbpaste', [], { maxBuffer: 1024 * 1024 }, (err, stdout) => {
+          if (err) reject(err);
+          else resolve(stdout);
+        });
+      });
+
+      // Check if clipboard changed and has content
+      if (currentContent && currentContent !== lastClipboardContent) {
+        lastClipboardContent = currentContent;
+        console.log(chalk.magenta(`[auto-read] New clipboard content detected (${currentContent.length} chars)`));
+
+        // Speak the new content
+        isSpeaking = true;
+        await typerService.speakClipboard();
+        isSpeaking = false;
+      }
+    } catch (error) {
+      // Ignore clipboard read errors
+    }
+  }, CLIPBOARD_WATCH_MS);
+
+  console.log(chalk.magenta(`[clipboard] Started watching (every ${CLIPBOARD_WATCH_MS}ms)`));
+}
+
+// Stop watching clipboard
+function stopClipboardWatch() {
+  if (clipboardWatchInterval) {
+    clearInterval(clipboardWatchInterval);
+    clipboardWatchInterval = null;
+    console.log(chalk.magenta('[clipboard] Stopped watching'));
+  }
+}
 
 // Strip all punctuation from text for command matching
 function stripPunctuation(text) {
@@ -135,7 +220,11 @@ function startSession(config) {
   if (sessionActive) return;
 
   sessionActive = true;
-  transcriberService.removeAllListeners();
+  // Remove ALL listeners before adding new ones to prevent double-firing
+  transcriberService.removeAllListeners('transcript');
+  transcriberService.removeAllListeners('open');
+  transcriberService.removeAllListeners('close');
+  transcriberService.removeAllListeners('error');
 
   console.log(chalk.bold.magenta('\n▶ Started listening...'));
   console.log(chalk.dim(`Press ${config.formatHotkey()} again to stop.`));
@@ -154,6 +243,13 @@ function startSession(config) {
   });
   transcriberService.on('transcript', async (text) => {
     if (!sessionActive) return;
+
+    // Ignore transcriptions while TTS is speaking (prevents feedback loop)
+    // Check both internal isSpeaking flag and external Claude TTS lock file
+    if (isSpeaking || existsSync(TTS_LOCK_FILE)) {
+      console.log(chalk.dim(`[transcript] Ignored (TTS speaking): "${text}"`));
+      return;
+    }
 
     const lowerText = text.toLowerCase().trim();
     const cleanText = stripPunctuation(lowerText);
@@ -273,13 +369,31 @@ function startSession(config) {
         case 'escape':
           await typerService.pressEscape();
           break;
+        case 'clear_all':
+          console.log(chalk.yellow('[clear] Clearing entire input field'));
+          await typerService.clearAll();
+          typedHistory.length = 0; // Clear history since all text is gone
+          break;
         case 'speak':
           console.log(chalk.magenta('[tts] Reading clipboard aloud...'));
+          isSpeaking = true;
           await typerService.speakClipboard();
+          isSpeaking = false;
           break;
         case 'stop_speak':
           console.log(chalk.magenta('[tts] Stopping speech...'));
           await typerService.stopSpeaking();
+          isSpeaking = false;
+          break;
+        case 'auto_read_on':
+          autoReadEnabled = true;
+          startClipboardWatch();
+          console.log(chalk.magenta('[tts] Auto-read enabled - will read new clipboard content'));
+          break;
+        case 'auto_read_off':
+          autoReadEnabled = false;
+          stopClipboardWatch();
+          console.log(chalk.magenta('[tts] Auto-read disabled'));
           break;
       }
       return;

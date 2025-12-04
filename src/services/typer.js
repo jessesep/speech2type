@@ -1,8 +1,12 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
+import EventEmitter from 'events';
 
-class TyperService {
+class TyperService extends EventEmitter {
   constructor(config) {
+    super();
     this.isAsciiSafe = config.data.speech.language.includes('en');
+    this.isSpeaking = false;
+    this.sayProcess = null;
   }
 
   async typeText(text) {
@@ -169,6 +173,41 @@ class TyperService {
       return true;
     } catch (error) {
       console.error('[typer] Error deleting characters:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear entire input field (Cmd+A to select all, then delete)
+   */
+  CLEAR_ALL_SCRIPT = `
+  on run
+    tell application "System Events"
+      keystroke "a" using {command down}
+      delay 0.05
+      key code 51
+    end tell
+  end run`;
+
+  async clearAll() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.CLEAR_ALL_SCRIPT],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Cleared all text in input field');
+      return true;
+    } catch (error) {
+      console.error('[typer] Error clearing all:', error);
       return false;
     }
   }
@@ -371,32 +410,40 @@ class TyperService {
 
   /**
    * Speak text aloud using macOS text-to-speech
+   * Emits 'speaking_start' and 'speaking_end' events
    * @param {string} text - Text to speak
    * @param {string} voice - Voice name (default: Samantha)
-   * @param {number} rate - Speech rate in words per minute (default: 200)
+   * @param {number} rate - Speech rate in words per minute (default: 220)
    */
-  async speak(text, voice = 'Samantha', rate = 200) {
+  async speak(text, voice = 'Samantha', rate = 220) {
     if (!text?.trim()) return true;
 
     try {
+      this.isSpeaking = true;
+      this.emit('speaking_start');
+
       await new Promise((resolve, reject) => {
-        execFile(
-          '/usr/bin/say',
-          ['-v', voice, '-r', String(rate), text],
-          { maxBuffer: 1024 * 1024 },
-          (err, stdout, _stderr) => {
-            if (err) {
-              return reject(err);
-            }
-            resolve(stdout);
-          }
-        );
+        this.sayProcess = spawn('/usr/bin/say', ['-v', voice, '-r', String(rate), text]);
+
+        this.sayProcess.on('close', (code) => {
+          this.sayProcess = null;
+          resolve(code);
+        });
+
+        this.sayProcess.on('error', (err) => {
+          this.sayProcess = null;
+          reject(err);
+        });
       });
+
       console.debug(`[typer] Spoke: "${text.substring(0, 50)}..."`);
       return true;
     } catch (error) {
       console.error('[typer] Error speaking text:', error);
       return false;
+    } finally {
+      this.isSpeaking = false;
+      this.emit('speaking_end');
     }
   }
 
@@ -405,17 +452,16 @@ class TyperService {
    */
   async stopSpeaking() {
     try {
-      await new Promise((resolve, reject) => {
-        execFile(
-          '/usr/bin/killall',
-          ['say'],
-          { maxBuffer: 1024 * 1024 },
-          (err, stdout, _stderr) => {
-            // Ignore error if no say process is running
-            resolve(stdout);
-          }
-        );
+      if (this.sayProcess) {
+        this.sayProcess.kill();
+        this.sayProcess = null;
+      }
+      // Also kill any other say processes
+      await new Promise((resolve) => {
+        execFile('/usr/bin/killall', ['say'], { maxBuffer: 1024 * 1024 }, () => resolve());
       });
+      this.isSpeaking = false;
+      this.emit('speaking_end');
       console.debug('[typer] Stopped speaking');
       return true;
     } catch (error) {

@@ -113,6 +113,22 @@ Stop speaking:
 
 *Tip: Copy Claude's response (Cmd+C), then say "read it" to hear it spoken aloud.*
 
+### Auto-Read Mode
+
+Automatically read new clipboard content aloud whenever it changes:
+
+| Say | Action |
+|-----|--------|
+| **"auto read on"** | Enable auto-read mode |
+| "auto read" | Enable auto-read mode |
+| "start auto read" | Enable auto-read mode |
+| **"auto read off"** | Disable auto-read mode |
+| "stop auto read" | Disable auto-read mode |
+
+*When auto-read is enabled, any new text copied to the clipboard will automatically be read aloud. Perfect for having Claude's responses read to you hands-free - just copy the response (Cmd+C) and it will be spoken automatically.*
+
+*Note: Speech recognition is paused while text is being read aloud to prevent feedback loops.*
+
 ### App Switching
 
 Use any of these prefixes: **"focus"**, **"switch to"**, **"go to"**, **"open"**
