@@ -1,6 +1,24 @@
 #!/bin/bash
 # Claude Code Stop Hook - Speaks Claude's response via TTS
 # Receives JSON with transcript_path pointing to conversation JSONL file
+#
+# Setup:
+# 1. Install Piper TTS: pip install piper-tts
+# 2. Download a voice model (e.g., en_US-lessac-high.onnx) from:
+#    https://github.com/rhasspy/piper/releases
+# 3. Place voice model in ~/.local/share/piper-voices/
+# 4. Copy this script to ~/.claude/hooks/speak-response.sh
+# 5. Add to ~/.claude/settings.json:
+#    {
+#      "hooks": {
+#        "Stop": [{
+#          "matcher": "*",
+#          "hooks": [{"type": "command", "command": "~/.claude/hooks/speak-response.sh"}]
+#        }]
+#      }
+#    }
+# 6. Create control file to enable: touch /tmp/claude-auto-speak
+#    Or toggle with speech2type's Cmd+' hotkey
 
 # Check if auto-speak is enabled (control file)
 CONTROL_FILE="/tmp/claude-auto-speak"
@@ -67,6 +85,26 @@ try:
     if len(last_assistant_text) > 2000:
         last_assistant_text = last_assistant_text[:2000] + '... (truncated)'
 
+    # Clean up text for natural speech
+    import re
+
+    # URLs
+    last_assistant_text = re.sub(r'https?://[^\s\)\]]+', 'website', last_assistant_text)
+    # File paths (Unix style)
+    last_assistant_text = re.sub(r'(?:~|/)[^\s\)\]]*(?:/[^\s\)\]]+)+', 'filepath', last_assistant_text)
+
+    # Remove markdown formatting
+    last_assistant_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', last_assistant_text)  # **bold**
+    last_assistant_text = re.sub(r'\*([^*]+)\*', r'\1', last_assistant_text)  # *italic*
+    last_assistant_text = re.sub(r'`[^`]+`', '', last_assistant_text)  # `code`
+    last_assistant_text = re.sub(r'```[\s\S]*?```', '', last_assistant_text)  # code blocks
+    last_assistant_text = re.sub(r'^#{1,6}\s+', '', last_assistant_text, flags=re.MULTILINE)  # headers
+    last_assistant_text = re.sub(r'^\s*[-*+]\s+', '', last_assistant_text, flags=re.MULTILINE)  # bullet points
+    last_assistant_text = re.sub(r'^\s*\d+\.\s+', '', last_assistant_text, flags=re.MULTILINE)  # numbered lists
+    last_assistant_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', last_assistant_text)  # [link](url)
+    last_assistant_text = re.sub(r'[*_~\`#|>]', '', last_assistant_text)  # remaining symbols
+    last_assistant_text = re.sub(r'\s+', ' ', last_assistant_text).strip()  # normalize whitespace
+
     print(last_assistant_text)
 except Exception as e:
     pass
@@ -78,12 +116,25 @@ if [[ -n "$TRANSCRIPT" ]]; then
     SPEAKING_LOCK="/tmp/claude-tts-speaking"
     touch "$SPEAKING_LOCK"
 
-    # Speak the response (Samantha voice, 200 wpm)
-    /usr/bin/say -v Samantha -r 200 "$TRANSCRIPT"
+    # Piper TTS configuration
+    # Find piper binary (check common locations)
+    PIPER_BIN=$(which piper 2>/dev/null || echo "$HOME/Library/Python/3.10/bin/piper")
+    PIPER_MODEL="$HOME/.local/share/piper-voices/en_US-lessac-high.onnx"
+    TMP_WAV="/tmp/claude-tts-$$.wav"
+
+    if [[ -x "$PIPER_BIN" && -f "$PIPER_MODEL" ]]; then
+        # Generate faster (0.55 length_scale), play at lower rate for deeper pitch (0.85)
+        echo "$TRANSCRIPT" | "$PIPER_BIN" --model "$PIPER_MODEL" --length_scale 0.55 --output_file "$TMP_WAV" 2>/dev/null
+        afplay -r 0.85 "$TMP_WAV"
+        rm -f "$TMP_WAV"
+    else
+        # Fallback to macOS say command if Piper not available
+        /usr/bin/say -v Samantha -r 200 "$TRANSCRIPT"
+    fi
 
     # Wait a moment after speaking before removing lock
     # This prevents speech2type from picking up residual audio
-    sleep 1
+    sleep 0.5
 
     # Remove lock file when done
     rm -f "$SPEAKING_LOCK"

@@ -1,13 +1,13 @@
 {
-  "name": "speech2type-fork",
-  "version": "0.2.0",
-  "description": "A minimal CLI tool that gives you quick voice typing in every Mac app. Fork with voice commands.",
+  "name": "speech2type-enhanced",
+  "version": "0.3.0",
+  "description": "Voice typing CLI for Mac with voice commands (affirmative, retract, silence) and Claude Code TTS integration.",
   "author": "jessesep",
   "license": "MIT",
-  "homepage": "https://github.com/jessesep/speech2type-fork",
+  "homepage": "https://github.com/jessesep/speech2type",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jessesep/speech2type-fork.git"
+    "url": "git+https://github.com/jessesep/speech2type.git"
   },
   "keywords": [
     "speech-to-text",
@@ -43,7 +43,7 @@
     "access": "public"
   },
   "bugs": {
-    "url": "https://github.com/jessesep/speech2type-fork/issues"
+    "url": "https://github.com/jessesep/speech2type/issues"
   },
   "scripts": {
     "start": "./bin/speech2type.js",

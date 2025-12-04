@@ -1,15 +1,22 @@
-# Speech2Type
+# Speech2Type Enhanced
 
-> **Voice typing from your terminal.**
+> **Voice typing from your terminal with voice commands.**
 
-A simple CLI tool that gives you fast voice typing in every Mac app. Instant speech-to-text from your terminal to your cursor with one hotkey - works with Claude Code, Cursor, and any macOS application.
+A CLI tool for fast voice typing in every Mac app. Includes voice commands like "affirmative" (Enter), "retract" (undo), and Claude Code integration for automatic text-to-speech responses.
 
-It just works:
+## Installation
+
 ```bash
-npm install -g speech2type && s2t start
+npm install -g speech2type-enhanced
+s2t start
 ```
 
-[![NPM Version](https://img.shields.io/npm/v/speech2type)](https://www.npmjs.com/package/speech2type)
+Or install directly from GitHub:
+```bash
+npm install -g github:jessesep/speech2type
+s2t start
+```
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://www.apple.com/macos/)
 
@@ -21,19 +28,25 @@ npm install -g speech2type && s2t start
 - **💸 Completely free**: Open source with free Deepgram API tier
 - **🌍 40+ languages**: English, Spanish, French, German, Japanese, Chinese, and many more
 
-### Fork Features (jessesep/speech2type)
+### Voice Commands
 
-This fork adds **voice commands** and **Claude Code integration** for hands-free control:
+| Say | Action |
+|-----|--------|
+| **"affirmative"** | Press Enter (submit) |
+| **"retract"** | Undo last spoken text |
+| **"retract everything confirm"** | Clear entire input field |
+| **"silence"** | Stop text-to-speech |
+| **"focus chrome"** | Switch to app |
+| **"terminal 1"** | Switch Terminal window |
 
-- **Submit text**: Say "affirmative" to press Enter
-- **Undo text**: Say "retract" to delete the last spoken chunk
-- **Clear all**: Say "retract everything confirm" to clear the input field
-- **Switch apps**: Say "focus chrome" or "switch to terminal"
-- **Switch Terminal windows**: Say "terminal 1" or "terminal claude"
-- **Text-to-speech**: Say "read it" to hear clipboard content
-- **Claude auto-speak**: Cmd+' toggles automatic reading of Claude responses
+### Hotkeys
 
-See [Voice Commands](#voice-commands) and [Claude Code Integration](#claude-code-integration) for details.
+| Key | Action |
+|-----|--------|
+| **Cmd+;** | Start/stop voice typing |
+| **Cmd+'** | Toggle Claude auto-speak |
+
+See [Voice Commands](#voice-commands-1) and [Claude Code Integration](#claude-code-integration) for full details.
 
 ### Perfect for:
 - **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)
@@ -98,24 +111,13 @@ This fork includes voice commands for hands-free control. All commands work with
 
 *Requires "confirm" to prevent accidental clearing.*
 
-### Text-to-Speech (Read Aloud)
-
-Read clipboard contents aloud using macOS text-to-speech:
+### Stop Text-to-Speech
 
 | Say | Action |
 |-----|--------|
-| **"read it"** | Read clipboard aloud |
-| "read that" | Read clipboard aloud |
-| "speak" | Read clipboard aloud |
-| "read aloud" | Read clipboard aloud |
+| **"silence"** | Stop current TTS playback |
 
-Stop speaking:
-
-| Say | Action |
-|-----|--------|
-| **"silence"** | Stop reading |
-
-*Tip: Copy Claude's response (Cmd+C), then say "read it" to hear it spoken aloud.*
+*Use Cmd+' to toggle Claude auto-speak on/off.*
 
 ### App Switching
 
@@ -155,7 +157,7 @@ Switch between multiple Terminal windows by index or by searching window titles:
 
 ## 🤖 Claude Code Integration
 
-This fork includes a hook that automatically reads Claude Code responses aloud using macOS text-to-speech.
+This fork includes a hook that automatically reads Claude Code responses aloud using Piper TTS (neural text-to-speech).
 
 ### Hotkeys
 
@@ -166,14 +168,27 @@ This fork includes a hook that automatically reads Claude Code responses aloud u
 
 ### Setup
 
-1. **Copy the hook script:**
+1. **Install Piper TTS:**
+```bash
+pip install piper-tts
+```
+
+2. **Download a voice model** (e.g., en_US-lessac-high):
+```bash
+mkdir -p ~/.local/share/piper-voices
+cd ~/.local/share/piper-voices
+# Download from https://github.com/rhasspy/piper/releases
+# Look for en_US-lessac-high.onnx and en_US-lessac-high.onnx.json
+```
+
+3. **Copy the hook script:**
 ```bash
 mkdir -p ~/.claude/hooks
 cp claude-hooks/speak-response.sh ~/.claude/hooks/
 chmod +x ~/.claude/hooks/speak-response.sh
 ```
 
-2. **Register the hook** - Create or edit `~/.claude/settings.json`:
+4. **Register the hook** - Create or edit `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
@@ -193,17 +208,19 @@ chmod +x ~/.claude/hooks/speak-response.sh
 ```
 *Replace `YOURUSERNAME` with your actual username.*
 
-3. **Enable auto-speak by default** (optional) - Add to `~/.zshrc`:
+5. **Enable auto-speak by default** (optional) - Add to `~/.zshrc`:
 ```bash
 touch /tmp/claude-auto-speak
 ```
 
 ### How It Works
 
-- When Claude finishes responding, the hook reads the response aloud
-- Speech2type pauses transcription while TTS is active (prevents feedback loops)
+- When Claude finishes responding, the hook reads the response aloud using Piper TTS
+- The voice is tuned for natural speech (faster generation, deeper pitch)
+- Speech2type pauses transcription while TTS is active (saves Deepgram API costs, prevents feedback loops)
 - Toggle on/off anytime with **Cmd+'**
 - Say **"silence"** to stop current speech
+- Falls back to macOS `say` command if Piper is not installed
 
 See [claude-hooks/README.md](claude-hooks/README.md) for detailed documentation.
 
@@ -295,7 +312,7 @@ See [supported languages](https://developers.deepgram.com/docs/models-languages-
 
 ```bash
 # Clone the repository
-git clone https://github.com/gergomiklos/speech2type.git
+git clone https://github.com/jessesep/speech2type.git
 cd speech2type
 
 # Install dependencies
@@ -386,8 +403,8 @@ DEBUG=1 s2t start
 ### Getting Help
 
 - **Documentation**: This README and inline help (`s2t --help`)
-- **Issues**: [GitHub Issues](https://github.com/gergomiklos/speech2type/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/gergomiklos/speech2type/discussions)
+- **Issues**: [GitHub Issues](https://github.com/jessesep/speech2type/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jessesep/speech2type/discussions)
 
 ## 🤝 Contributing
 
