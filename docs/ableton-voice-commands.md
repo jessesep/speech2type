@@ -17,121 +17,116 @@ AbletonOSC is a MIDI remote script that exposes Ableton's Live Object Model via 
 5. Under **Control Surface**, select **AbletonOSC**
 6. You should see: "AbletonOSC: Listening for OSC on port 11000"
 
-### 2. Start speech2type with Ableton mode
+### 2. Switch to Music Mode
 
-```bash
-s2t start --ableton
-```
+Say "computer music mode" to enable Ableton voice control.
 
 ---
 
-## Voice Commands Overview
+## Push-to-Talk (Music Mode)
 
-All Ableton commands use the "ableton" prefix to avoid conflicts with normal speech.
+In music mode, listening is **OFF by default** to avoid interfering with your music workflow.
+
+- **Hold Cmd+Option** → Start listening
+- **Release Cmd+Option** → Auto-submit and stop listening
+
+You can also use the regular hotkey (Cmd+;) to toggle listening manually.
+
+---
+
+## Voice Commands
+
+All commands require the "computer" prefix. Commands are designed with multiple variations for better speech recognition.
 
 ### Transport Controls
 
-| Voice Command | Action |
-|---------------|--------|
-| "ableton play" | Start playback |
-| "ableton stop" | Stop playback |
-| "ableton continue" | Continue from current position |
-| "ableton record" | Toggle session record |
-| "ableton overdub" | Toggle arrangement overdub |
-| "ableton tap" | Tap tempo |
-| "ableton undo" | Undo last action |
-| "ableton redo" | Redo last action |
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer play" | start, go, playing | Start playback |
+| "computer stop" | pause, halt | Stop playback |
+| "computer continue" | resume | Continue from current position |
+| "computer record" | recording, rec, start recording | Toggle session record |
+| "computer overdub" | over dub | Toggle arrangement overdub |
+| "computer tap" | tap tempo, tempo tap | Tap tempo |
+| "computer undo" | | Undo last action |
+| "computer redo" | | Redo last action |
 
 ### Tempo & Metronome
 
-| Voice Command | Action |
-|---------------|--------|
-| "ableton tempo [number]" | Set tempo (e.g., "ableton tempo 120") |
-| "ableton metronome on" | Turn metronome on |
-| "ableton metronome off" | Turn metronome off |
-| "ableton metronome" | Toggle metronome |
-
-### Track Controls
-
-Track numbers are 1-indexed in voice commands (track 1 = first track).
-
-| Voice Command | Action |
-|---------------|--------|
-| "ableton mute track [n]" | Mute track n |
-| "ableton unmute track [n]" | Unmute track n |
-| "ableton solo track [n]" | Solo track n |
-| "ableton unsolo track [n]" | Unsolo track n |
-| "ableton arm track [n]" | Arm track n for recording |
-| "ableton disarm track [n]" | Disarm track n |
-| "ableton volume track [n] [0-100]" | Set track volume (percentage) |
-| "ableton pan track [n] left/center/right" | Set track panning |
-| "ableton select track [n]" | Select track n |
-
-### Scene Controls
-
-Scene numbers are 1-indexed in voice commands (scene 1 = first scene).
-
-| Voice Command | Action |
-|---------------|--------|
-| "ableton scene [n]" | Fire scene n |
-| "ableton fire scene [n]" | Fire scene n |
-| "ableton stop scene" | Stop all clips |
-| "ableton next scene" | Select and fire next scene |
-| "ableton previous scene" | Select and fire previous scene |
-
-### Clip Controls
-
-| Voice Command | Action |
-|---------------|--------|
-| "ableton clip [track] [slot]" | Fire clip at track/slot |
-| "ableton stop clip [track]" | Stop clips on track |
-| "ableton stop all clips" | Stop all playing clips |
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer tempo 120" | set tempo 120, bpm 120, 120 bpm | Set tempo |
+| "computer metronome" | toggle metronome, click, toggle click | Toggle metronome |
+| "computer metronome on" | click on | Turn metronome on |
+| "computer metronome off" | click off | Turn metronome off |
 
 ### Loop Controls
 
-| Voice Command | Action |
-|---------------|--------|
-| "ableton loop on" | Enable loop |
-| "ableton loop off" | Disable loop |
-| "ableton loop" | Toggle loop |
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer loop" | toggle loop, looping | Toggle loop |
+| "computer loop on" | | Enable loop |
+| "computer loop off" | | Disable loop |
+
+### Track Controls
+
+Track numbers are 1-indexed (track 1 = first track).
+
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer mute track 1" | mute 1, track 1 mute | Mute track |
+| "computer unmute track 1" | unmute 1, track 1 unmute | Unmute track |
+| "computer solo track 1" | solo 1, track 1 solo | Solo track |
+| "computer unsolo track 1" | unsolo 1, track 1 unsolo | Unsolo track |
+| "computer arm track 1" | arm 1, track 1 arm, record arm 1 | Arm for recording |
+| "computer disarm track 1" | disarm 1, unarm 1, track 1 disarm | Disarm track |
+| "computer track 1" | select track 1, go to track 1 | Select track |
+| "computer volume track 1 50" | track 1 volume 50 | Set track volume (0-100) |
+
+### Scene Controls
+
+Scene numbers are 1-indexed (scene 1 = first scene).
+
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer scene 1" | fire scene 1, launch scene 1, play scene 1 | Fire scene |
+| "computer stop all" | stop all clips, stop clips, stop everything | Stop all clips |
+
+### Track & Scene Management
+
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer new audio track" | create audio track, add audio track | Create audio track |
+| "computer new midi track" | create midi track, add midi track | Create MIDI track |
+| "computer new return track" | create return track, add return track | Create return track |
+| "computer new scene" | create scene, add scene | Create scene |
+| "computer delete track 1" | remove track 1 | Delete track |
+| "computer duplicate track 1" | copy track 1 | Duplicate track |
+| "computer delete scene 1" | remove scene 1 | Delete scene |
+| "computer duplicate scene 1" | copy scene 1 | Duplicate scene |
 
 ### Navigation
 
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer next cue" | next marker, cue next | Jump to next cue point |
+| "computer previous cue" | previous marker, cue previous | Jump to previous cue |
+
+### Other
+
+| Voice Command | Variations | Action |
+|---------------|------------|--------|
+| "computer capture" | capture midi | Capture MIDI |
+| "computer find" | search | Open find dialog (Cmd+F) |
+
+### Mode Switching
+
 | Voice Command | Action |
 |---------------|--------|
-| "ableton jump [bars]" | Jump forward by bars |
-| "ableton back [bars]" | Jump backward by bars |
-| "ableton cue next" | Jump to next cue point |
-| "ableton cue previous" | Jump to previous cue point |
-
-### Quantization
-
-| Voice Command | Action |
-|---------------|--------|
-| "ableton quantize none" | No quantization |
-| "ableton quantize bar" | Quantize to 1 bar |
-| "ableton quantize beat" | Quantize to 1 beat |
-
----
-
-## Advanced Commands (Planned)
-
-These commands are planned for future implementation:
-
-### Device Control
-- "ableton device [n] parameter [m] [value]" - Set device parameter
-- "ableton bypass device [n]" - Bypass device on selected track
-
-### Arrangement
-- "ableton arrangement" - Switch to arrangement view
-- "ableton session" - Switch to session view
-
-### Sends
-- "ableton send [track] [send] [level]" - Set send level
-
-### Groups
-- "ableton fold track [n]" - Fold/unfold group track
-- "ableton unfold track [n]" - Unfold group track
+| "computer general mode" | Switch to general mode |
+| "computer music mode" | Switch to Ableton/music mode |
+| "computer ableton mode" | Switch to Ableton/music mode |
+| "computer exit" | Exit to general mode |
 
 ---
 
@@ -161,6 +156,21 @@ speech2type communicates with AbletonOSC using:
 
 ---
 
+## Testing OSC Commands
+
+Use the test script to send OSC commands directly:
+
+```bash
+node scripts/test-ableton.js play
+node scripts/test-ableton.js tempo 120
+node scripts/test-ableton.js mute 1
+node scripts/test-ableton.js scene 2
+```
+
+Run without arguments to see all available commands.
+
+---
+
 ## Troubleshooting
 
 ### "AbletonOSC not responding"
@@ -171,9 +181,9 @@ speech2type communicates with AbletonOSC using:
 
 ### "Commands not recognized"
 
-1. Ensure you're using the "ableton" prefix
+1. Ensure you're using the "computer" prefix
 2. Speak clearly and wait for the command to be processed
-3. Check that speech2type is running with `--ableton` flag
+3. Make sure you're in music mode ("computer music mode")
 
 ### "Track/scene numbers don't match"
 
