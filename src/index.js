@@ -35,6 +35,10 @@ const CLIPBOARD_WATCH_MS = 500; // Check clipboard every 500ms
 // Store config reference for voice commands
 let currentConfig = null;
 
+// Track if this is the initial app startup (for init-only commands like computer resume/fresh)
+// Only true once when s2t first launches, never reset
+let isInitMode = true;
+
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
   // Submit / Enter
@@ -427,14 +431,22 @@ function startSession(config) {
           }
           break;
         case 'claude_resume':
-          playBeep();
-          exec('osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\'', () => {});
+          if (isInitMode) {
+            playBeep();
+            exec('osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\'', () => {});
+            isInitMode = false;
+          }
           break;
         case 'claude_fresh':
-          playBeep();
-          exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
+          if (isInitMode) {
+            playBeep();
+            exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
+            isInitMode = false;
+          }
           break;
       }
+      // After any command, disable init mode
+      isInitMode = false;
       return;
     }
 
@@ -490,7 +502,8 @@ function startSession(config) {
         typedHistory.push(typedText.length);
         if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
         pendingText = '';
-
+        // After first text typed, disable init mode
+        isInitMode = false;
       }
       pendingTimeout = null;
     }, COMMAND_WAIT_MS);
