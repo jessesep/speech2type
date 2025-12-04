@@ -456,10 +456,25 @@ class TyperService extends EventEmitter {
         this.sayProcess.kill();
         this.sayProcess = null;
       }
-      // Also kill any other say processes
+      // Kill any say processes (macOS TTS)
       await new Promise((resolve) => {
         execFile('/usr/bin/killall', ['say'], { maxBuffer: 1024 * 1024 }, () => resolve());
       });
+      // Kill any afplay processes (Piper TTS playback)
+      await new Promise((resolve) => {
+        execFile('/usr/bin/killall', ['afplay'], { maxBuffer: 1024 * 1024 }, () => resolve());
+      });
+      // Kill any piper processes
+      await new Promise((resolve) => {
+        execFile('/usr/bin/killall', ['piper'], { maxBuffer: 1024 * 1024 }, () => resolve());
+      });
+      // Remove the TTS lock file
+      const fs = await import('fs');
+      try {
+        fs.unlinkSync('/tmp/claude-tts-speaking');
+      } catch (e) {
+        // Ignore if file doesn't exist
+      }
       this.isSpeaking = false;
       this.emit('speaking_end');
       console.debug('[typer] Stopped speaking');

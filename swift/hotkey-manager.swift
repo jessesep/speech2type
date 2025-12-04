@@ -16,6 +16,10 @@ var isCapturing = false
 var secondaryKeyCode: CGKeyCode? = nil
 var secondaryFlags: CGEventFlags = []
 
+// Spacebar (keycode 49) to stop TTS - only when TTS is active
+let spacebarKeyCode: CGKeyCode = 49
+let ttsLockFile = "/tmp/claude-tts-speaking"
+
 // ---- Keyboard layout helpers ----
 
 private func currentKeyboardLayout() -> UnsafePointer<UCKeyboardLayout>? {
@@ -179,6 +183,14 @@ func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, re
             if let secKey = secondaryKeyCode, keycode == secKey && flags.contains(secondaryFlags) {
                 print("TOGGLE_AUTO_READ")
                 fflush(stdout)
+            }
+            // Check spacebar (no modifiers) to stop TTS - only when TTS lock file exists
+            if keycode == spacebarKeyCode && flags.isEmpty {
+                let fm = FileManager.default
+                if fm.fileExists(atPath: ttsLockFile) {
+                    print("STOP_TTS")
+                    fflush(stdout)
+                }
             }
         }
     }

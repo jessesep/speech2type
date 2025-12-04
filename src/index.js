@@ -474,7 +474,7 @@ async function startApplication(config) {
 
   console.log(`Ready. Press ${config.formatHotkey()} to speak. Ctrl+C to quit.`);
   console.log(chalk.dim('As you speak, transcription will appear in real time at your cursor, so place it where you want to type.'));
-  console.log(chalk.dim("Press CMD+' to toggle auto-read mode for Claude responses."));
+  console.log(chalk.dim("Press CMD+' to toggle auto-read mode. Press SPACEBAR to stop TTS."));
   hotkeyService.on('toggle', () => (sessionActive ? stopSession(config) : startSession(config)));
   hotkeyService.on('toggle_auto_read', () => {
     // Toggle the Claude auto-speak control file
@@ -488,6 +488,16 @@ async function startApplication(config) {
       exec(`touch ${controlFile}`, () => {});
       console.log(chalk.magenta('[auto-read] Claude auto-speak ENABLED'));
     }
+  });
+  hotkeyService.on('stop_tts', async () => {
+    // Spacebar pressed while TTS is playing - stop it
+    // First, kill the audio but DON'T remove the lock file yet
+    exec('killall afplay 2>/dev/null; killall piper 2>/dev/null; killall say 2>/dev/null', () => {});
+    console.log(chalk.magenta('[TTS] Stopped by spacebar'));
+    // Keep the lock file for a moment to prevent transcription pickup
+    setTimeout(() => {
+      exec('rm -f /tmp/claude-tts-speaking', () => {});
+    }, 800);
   });
   hotkeyService.start();
 }

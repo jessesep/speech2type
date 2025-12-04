@@ -35,6 +35,8 @@ class HotkeyService extends EventEmitter {
         this.emit('toggle');
       } else if (trimmed === 'TOGGLE_AUTO_READ') {
         this.emit('toggle_auto_read');
+      } else if (trimmed === 'STOP_TTS') {
+        this.emit('stop_tts');
       }
     });
 
