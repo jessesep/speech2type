@@ -171,6 +171,64 @@ class TyperService {
       );
     });
   }
+
+  /**
+   * Focus/activate an application by name
+   */
+  FOCUS_APP_SCRIPT = `
+  on run argv
+    if (count of argv) is 0 then error number -50
+    set appName to item 1 of argv
+    tell application appName to activate
+  end run`;
+
+  async focusApp(appName) {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.FOCUS_APP_SCRIPT, appName],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug(`[typer] Focused app: ${appName}`);
+      return true;
+    } catch (error) {
+      console.error(`[typer] Error focusing app ${appName}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get list of running applications
+   */
+  async getRunningApps() {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', 'tell application "System Events" to get name of every process whose background only is false'],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      return result.trim().split(', ');
+    } catch (error) {
+      console.error('[typer] Error getting running apps:', error);
+      return [];
+    }
+  }
 }
 
 export { TyperService };

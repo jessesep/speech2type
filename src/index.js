@@ -35,6 +35,59 @@ const VOICE_COMMANDS = {
   'cancel': 'escape',
 };
 
+// App switching patterns - "focus [app]", "switch to [app]", "open [app]"
+const APP_SWITCH_PATTERNS = [
+  /^(?:focus|switch to|go to|open)\s+(.+)$/i,
+];
+
+// Common app name aliases
+const APP_ALIASES = {
+  'terminal': 'Terminal',
+  'term': 'Terminal',
+  'chrome': 'Google Chrome',
+  'google': 'Google Chrome',
+  'browser': 'Google Chrome',
+  'safari': 'Safari',
+  'finder': 'Finder',
+  'files': 'Finder',
+  'code': 'Visual Studio Code',
+  'vs code': 'Visual Studio Code',
+  'vscode': 'Visual Studio Code',
+  'cursor': 'Cursor',
+  'slack': 'Slack',
+  'discord': 'Discord',
+  'spotify': 'Spotify',
+  'music': 'Spotify',
+  'notes': 'Notes',
+  'messages': 'Messages',
+  'mail': 'Mail',
+  'email': 'Mail',
+  'preview': 'Preview',
+  'settings': 'System Settings',
+  'system settings': 'System Settings',
+  'preferences': 'System Settings',
+};
+
+// Try to match an app name from spoken text
+function matchAppName(spokenName) {
+  const lower = spokenName.toLowerCase().trim();
+
+  // Check aliases first
+  if (APP_ALIASES[lower]) {
+    return APP_ALIASES[lower];
+  }
+
+  // Try to find a partial match in aliases
+  for (const [alias, appName] of Object.entries(APP_ALIASES)) {
+    if (lower.includes(alias) || alias.includes(lower)) {
+      return appName;
+    }
+  }
+
+  // Return the spoken name with first letter capitalized (might work for exact app names)
+  return spokenName.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function playSound() {
   console.debug('[speech2type] Playing sound effect');
   exec('afplay /System/Library/Sounds/Tink.aiff', (err) => {
@@ -79,6 +132,28 @@ function startSession(config) {
     if (!sessionActive) return;
 
     const lowerText = text.toLowerCase().trim();
+
+    // Check for app switching commands first (e.g., "focus terminal", "switch to chrome")
+    for (const pattern of APP_SWITCH_PATTERNS) {
+      const match = lowerText.match(pattern);
+      if (match) {
+        // Clear any pending
+        if (pendingTimeout) {
+          clearTimeout(pendingTimeout);
+          pendingTimeout = null;
+        }
+        if (pendingText) {
+          await typerService.typeText(pendingText + ' ');
+          pendingText = '';
+        }
+
+        const spokenAppName = match[1];
+        const appName = matchAppName(spokenAppName);
+        console.log(chalk.green(`[app switch] "${spokenAppName}" → ${appName}`));
+        await typerService.focusApp(appName);
+        return;
+      }
+    }
 
     // Check if this chunk is ONLY a command (e.g., user said "send it" after a pause)
     if (VOICE_COMMANDS[lowerText]) {
