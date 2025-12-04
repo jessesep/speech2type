@@ -31,6 +31,20 @@ const VOICE_COMMANDS = {
   'belay that': 'undo',        // nautical term, very distinctive
   'retract': 'undo',
   'undo': 'undo',
+
+  // Text-to-speech commands - read clipboard aloud
+  'read it': 'speak',
+  'read that': 'speak',
+  'speak': 'speak',
+  'read aloud': 'speak',
+  'read clipboard': 'speak',
+
+  // Stop speaking
+  'stop reading': 'stop_speak',
+  'silence': 'stop_speak',
+  'quiet': 'stop_speak',
+  'shut up': 'stop_speak',
+  'hush': 'stop_speak',
 };
 
 // Strip all punctuation from text for command matching
@@ -258,6 +272,14 @@ function startSession(config) {
           break;
         case 'escape':
           await typerService.pressEscape();
+          break;
+        case 'speak':
+          console.log(chalk.magenta('[tts] Reading clipboard aloud...'));
+          await typerService.speakClipboard();
+          break;
+        case 'stop_speak':
+          console.log(chalk.magenta('[tts] Stopping speech...'));
+          await typerService.stopSpeaking();
           break;
       }
       return;

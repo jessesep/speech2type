@@ -89,6 +89,30 @@ This fork includes voice commands for hands-free control. All commands work with
 | "belay that" | Delete the last transcribed text |
 | "undo" | Delete the last transcribed text |
 
+*You can say "retract" multiple times to undo multiple chunks (up to 20).*
+
+### Text-to-Speech (Read Aloud)
+
+Read clipboard contents aloud using macOS text-to-speech:
+
+| Say | Action |
+|-----|--------|
+| **"read it"** | Read clipboard aloud |
+| "read that" | Read clipboard aloud |
+| "speak" | Read clipboard aloud |
+| "read aloud" | Read clipboard aloud |
+
+Stop speaking:
+
+| Say | Action |
+|-----|--------|
+| **"silence"** | Stop reading |
+| "quiet" | Stop reading |
+| "hush" | Stop reading |
+| "stop reading" | Stop reading |
+
+*Tip: Copy Claude's response (Cmd+C), then say "read it" to hear it spoken aloud.*
+
 ### App Switching
 
 Use any of these prefixes: **"focus"**, **"switch to"**, **"go to"**, **"open"**

@@ -368,6 +368,92 @@ class TyperService {
       return [];
     }
   }
+
+  /**
+   * Speak text aloud using macOS text-to-speech
+   * @param {string} text - Text to speak
+   * @param {string} voice - Voice name (default: Samantha)
+   * @param {number} rate - Speech rate in words per minute (default: 200)
+   */
+  async speak(text, voice = 'Samantha', rate = 200) {
+    if (!text?.trim()) return true;
+
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/say',
+          ['-v', voice, '-r', String(rate), text],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug(`[typer] Spoke: "${text.substring(0, 50)}..."`);
+      return true;
+    } catch (error) {
+      console.error('[typer] Error speaking text:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Stop any ongoing speech
+   */
+  async stopSpeaking() {
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/killall',
+          ['say'],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            // Ignore error if no say process is running
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug('[typer] Stopped speaking');
+      return true;
+    } catch (error) {
+      return true; // Ignore errors
+    }
+  }
+
+  /**
+   * Read clipboard contents aloud
+   */
+  async speakClipboard(voice = 'Samantha', rate = 200) {
+    try {
+      const clipboardText = await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/pbpaste',
+          [],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+
+      if (clipboardText?.trim()) {
+        console.debug(`[typer] Speaking clipboard: "${clipboardText.substring(0, 50)}..."`);
+        return await this.speak(clipboardText, voice, rate);
+      } else {
+        console.debug('[typer] Clipboard is empty');
+        return false;
+      }
+    } catch (error) {
+      console.error('[typer] Error reading clipboard:', error);
+      return false;
+    }
+  }
 }
 
 export { TyperService };
