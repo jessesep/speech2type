@@ -17,22 +17,38 @@ let pendingTimeout = null;
 const COMMAND_WAIT_MS = 400; // Wait this long to see if a command follows
 
 // Voice commands - trigger phrases mapped to actions
+// Added many variations to handle different transcription results
 const VOICE_COMMANDS = {
-  // Submit/Enter commands
+  // Submit/Enter commands - many variations
   'send it': 'enter',
+  'send': 'enter',
+  'sent it': 'enter',      // common mishearing
+  'sent': 'enter',
   'submit': 'enter',
   'enter': 'enter',
   'press enter': 'enter',
   'execute': 'enter',
+  'run it': 'enter',
+  'run': 'enter',
+  'go': 'enter',
+  'do it': 'enter',
+  'done': 'enter',
+  'send that': 'enter',
+  'submit that': 'enter',
 
   // Newline commands
   'new line': 'newline',
   'newline': 'newline',
   'next line': 'newline',
+  'line break': 'newline',
+  'break': 'newline',
 
   // Escape commands
   'escape': 'escape',
   'cancel': 'escape',
+  'stop': 'escape',
+  'nevermind': 'escape',
+  'never mind': 'escape',
 };
 
 // App switching patterns - "focus [app]", "switch to [app]", "open [app]"
@@ -132,6 +148,9 @@ function startSession(config) {
     if (!sessionActive) return;
 
     const lowerText = text.toLowerCase().trim();
+
+    // Log what we received for debugging
+    console.log(chalk.dim(`[transcript] "${text}" → normalized: "${lowerText}"`));
 
     // Check for app switching commands first (e.g., "focus terminal", "switch to chrome")
     for (const pattern of APP_SWITCH_PATTERNS) {
