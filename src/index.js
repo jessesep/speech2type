@@ -16,8 +16,9 @@ let pendingText = '';
 let pendingTimeout = null;
 const COMMAND_WAIT_MS = 400; // Wait this long to see if a command follows
 
-// Track last typed text for undo functionality
-let lastTypedLength = 0;
+// History of typed text lengths for multiple undos
+const typedHistory = [];
+const MAX_UNDO_HISTORY = 20; // Keep last 20 chunks
 
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
@@ -221,14 +222,14 @@ function startSession(config) {
       const action = VOICE_COMMANDS[cleanText];
 
       if (action === 'undo') {
-        // Delete pending text if any, or delete last typed text
+        // Delete pending text if any, or delete from history
         if (pendingText) {
           console.log(chalk.yellow(`[undo] Discarding pending: "${pendingText}"`));
           pendingText = '';
-        } else if (lastTypedLength > 0) {
-          console.log(chalk.yellow(`[undo] Deleting ${lastTypedLength} characters`));
-          await typerService.deleteCharacters(lastTypedLength);
-          lastTypedLength = 0;
+        } else if (typedHistory.length > 0) {
+          const lastLength = typedHistory.pop();
+          console.log(chalk.yellow(`[undo] Deleting ${lastLength} characters (${typedHistory.length} more in history)`));
+          await typerService.deleteCharacters(lastLength);
         } else {
           console.log(chalk.yellow(`[undo] Nothing to undo`));
         }
@@ -239,7 +240,8 @@ function startSession(config) {
       if (pendingText) {
         const typedText = pendingText + ' ';
         await typerService.typeText(typedText);
-        lastTypedLength = typedText.length;
+        typedHistory.push(typedText.length);
+        if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
         pendingText = '';
       }
 
@@ -249,7 +251,7 @@ function startSession(config) {
       switch (action) {
         case 'enter':
           await typerService.pressEnter();
-          lastTypedLength = 0; // Reset after enter
+          typedHistory.length = 0; // Clear history after enter
           break;
         case 'newline':
           await typerService.insertNewline();
@@ -308,7 +310,9 @@ function startSession(config) {
       if (pendingText && sessionActive) {
         const typedText = pendingText + ' ';
         await typerService.typeText(typedText);
-        lastTypedLength = typedText.length; // Track for undo
+        // Add to undo history
+        typedHistory.push(typedText.length);
+        if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
         pendingText = '';
       }
       pendingTimeout = null;
