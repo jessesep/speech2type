@@ -17,9 +17,20 @@ npm install -g speech2type && s2t start
 
 - **⚡️ Real-time transcription**: Your words appear instantly as you speak
 - **💻 Works everywhere**: Claude Code, Cursor, Slack, Chrome, Lovable... any Mac app with text input
-- **🎯 Inline-typing**: Text is inserted directly at the cursor’s position (no clipboard involved).
+- **🎯 Inline-typing**: Text is inserted directly at the cursor's position (no clipboard involved).
 - **💸 Completely free**: Open source with free Deepgram API tier
 - **🌍 40+ languages**: English, Spanish, French, German, Japanese, Chinese, and many more
+
+### Fork Features (jessesep/speech2type-fork)
+
+This fork adds **voice commands** for hands-free control:
+
+- **Submit text**: Say "affirmative" to press Enter
+- **Undo text**: Say "retract" to delete the last spoken chunk
+- **Switch apps**: Say "focus chrome" or "switch to terminal"
+- **Switch Terminal windows**: Say "terminal 1" or "terminal claude"
+
+See [Voice Commands](#voice-commands) for the complete list.
 
 ### Perfect for:
 - **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)
@@ -57,6 +68,62 @@ s2t start
 5. **Press hotkey again**: Stop listening
 
 That's it! You now have voice typing in every Mac app.
+
+## 🎤 Voice Commands
+
+This fork includes voice commands for hands-free control. All commands work with punctuation (e.g., "Affirmative." works the same as "affirmative").
+
+### Submit / Enter
+
+| Say | Action |
+|-----|--------|
+| **"affirmative"** | Press Enter (submit text) |
+
+### Undo / Delete Last Chunk
+
+| Say | Action |
+|-----|--------|
+| **"retract"** | Delete the last transcribed text |
+| "disregard" | Delete the last transcribed text |
+| "scratch that" | Delete the last transcribed text |
+| "belay that" | Delete the last transcribed text |
+| "undo" | Delete the last transcribed text |
+
+### App Switching
+
+Use any of these prefixes: **"focus"**, **"switch to"**, **"go to"**, **"open"**
+
+| Say | Switches To |
+|-----|-------------|
+| "focus terminal" | Terminal |
+| "focus chrome" / "focus google" / "focus browser" | Google Chrome |
+| "focus safari" | Safari |
+| "focus finder" / "focus files" | Finder |
+| "focus code" / "focus vs code" / "focus vscode" | Visual Studio Code |
+| "focus cursor" | Cursor |
+| "focus slack" | Slack |
+| "focus discord" | Discord |
+| "focus spotify" / "focus music" | Spotify |
+| "focus notes" | Notes |
+| "focus messages" | Messages |
+| "focus mail" / "focus email" | Mail |
+| "focus preview" | Preview |
+| "focus settings" / "focus preferences" | System Settings |
+
+### Terminal Window Switching
+
+Switch between multiple Terminal windows by index or by searching window titles:
+
+| Say | Action |
+|-----|--------|
+| **"terminal 1"** | Switch to Terminal window 1 |
+| **"terminal 2"** | Switch to Terminal window 2 |
+| **"window 1"** | Switch to Terminal window 1 |
+| **"terminal claude"** | Switch to Terminal window containing "claude" in title |
+| **"terminal ssh"** | Switch to Terminal window containing "ssh" in title |
+| **"window with code"** | Switch to Terminal window containing "code" in title |
+
+*Note: Terminal window titles typically show the current directory and running command.*
 
 ## 📋 Requirements
 

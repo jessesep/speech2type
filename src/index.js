@@ -16,10 +16,20 @@ let pendingText = '';
 let pendingTimeout = null;
 const COMMAND_WAIT_MS = 400; // Wait this long to see if a command follows
 
+// Track last typed text for undo functionality
+let lastTypedLength = 0;
+
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
   // Primary command - "affirmative" with all punctuation variations handled by stripPunctuation()
   'affirmative': 'enter',
+
+  // Undo/delete last chunk - distinctive words that won't appear in normal speech
+  'disregard': 'undo',
+  'scratch that': 'undo',
+  'belay that': 'undo',        // nautical term, very distinctive
+  'retract': 'undo',
+  'undo': 'undo',
 };
 
 // Strip all punctuation from text for command matching
@@ -207,19 +217,39 @@ function startSession(config) {
         pendingTimeout = null;
       }
 
-      // If there's pending text, type it first
+      // For undo, don't type pending text - we want to undo it too
+      const action = VOICE_COMMANDS[cleanText];
+
+      if (action === 'undo') {
+        // Delete pending text if any, or delete last typed text
+        if (pendingText) {
+          console.log(chalk.yellow(`[undo] Discarding pending: "${pendingText}"`));
+          pendingText = '';
+        } else if (lastTypedLength > 0) {
+          console.log(chalk.yellow(`[undo] Deleting ${lastTypedLength} characters`));
+          await typerService.deleteCharacters(lastTypedLength);
+          lastTypedLength = 0;
+        } else {
+          console.log(chalk.yellow(`[undo] Nothing to undo`));
+        }
+        return;
+      }
+
+      // If there's pending text, type it first (for non-undo commands)
       if (pendingText) {
-        await typerService.typeText(pendingText + ' ');
+        const typedText = pendingText + ' ';
+        await typerService.typeText(typedText);
+        lastTypedLength = typedText.length;
         pendingText = '';
       }
 
       // Execute the command
-      const action = VOICE_COMMANDS[cleanText];
       console.log(chalk.cyan(`[voice command] "${cleanText}" → ${action}`));
 
       switch (action) {
         case 'enter':
           await typerService.pressEnter();
+          lastTypedLength = 0; // Reset after enter
           break;
         case 'newline':
           await typerService.insertNewline();
@@ -276,7 +306,9 @@ function startSession(config) {
 
     pendingTimeout = setTimeout(async () => {
       if (pendingText && sessionActive) {
-        await typerService.typeText(pendingText + ' ');
+        const typedText = pendingText + ' ';
+        await typerService.typeText(typedText);
+        lastTypedLength = typedText.length; // Track for undo
         pendingText = '';
       }
       pendingTimeout = null;

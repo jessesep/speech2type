@@ -137,6 +137,44 @@ class TyperService {
   }
 
   /**
+   * Delete a number of characters (backspace)
+   */
+  BACKSPACE_SCRIPT = `
+  on run argv
+    if (count of argv) is 0 then error number -50
+    set deleteCount to (item 1 of argv as number)
+    tell application "System Events"
+      repeat deleteCount times
+        key code 51
+      end repeat
+    end tell
+  end run`;
+
+  async deleteCharacters(count) {
+    if (count <= 0) return true;
+    try {
+      await new Promise((resolve, reject) => {
+        execFile(
+          '/usr/bin/osascript',
+          ['-e', this.BACKSPACE_SCRIPT, String(count)],
+          { maxBuffer: 1024 * 1024 },
+          (err, stdout, _stderr) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(stdout);
+          }
+        );
+      });
+      console.debug(`[typer] Deleted ${count} characters`);
+      return true;
+    } catch (error) {
+      console.error('[typer] Error deleting characters:', error);
+      return false;
+    }
+  }
+
+  /**
    * Execute a key code via AppleScript
    */
   KEYCODE_SCRIPT = `
