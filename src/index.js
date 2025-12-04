@@ -32,6 +32,9 @@ let lastClipboardContent = '';
 let clipboardWatchInterval = null;
 const CLIPBOARD_WATCH_MS = 500; // Check clipboard every 500ms
 
+// Store config reference for voice commands
+let currentConfig = null;
+
 // Voice commands - using "affirmative" as the main trigger
 const VOICE_COMMANDS = {
   // Submit / Enter
@@ -62,6 +65,14 @@ const VOICE_COMMANDS = {
   'computer new tab': 'new_tab',
   'computer close tab': 'close_tab',
   'computer new window': 'new_window',
+
+  // Listening control
+  'computer stop listening': 'stop_listening',
+  'computer stop': 'stop_listening',
+
+  // Claude Code launch
+  'computer resume': 'claude_resume',
+  'computer fresh': 'claude_fresh',
 };
 
 // Play a soft beep for audio feedback
@@ -69,9 +80,12 @@ function playBeep() {
   exec('afplay -v 0.3 /System/Library/Sounds/Pop.aiff &', () => {});
 }
 
-// Play a subtle typing sound when text is transcribed
+// Play subtle typing sounds (always 2 taps)
 function playTypingSound() {
-  exec('afplay -v 0.15 /System/Library/Sounds/Tink.aiff &', () => {});
+  exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+  setTimeout(() => {
+    exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+  }, 70);
 }
 
 // Auto-read state
@@ -191,11 +205,12 @@ function matchAppName(spokenName) {
   return spokenName.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-function playSound() {
-  console.debug('[speech2type] Playing sound effect');
-  exec('afplay /System/Library/Sounds/Tink.aiff', (err) => {
-    if (err) console.debug('[speech2type] Sound playback failed:', err.message);
-  });
+function playStartSound() {
+  exec('afplay -v 0.3 -r 1.3 /System/Library/Sounds/Bottle.aiff &', () => {});
+}
+
+function playStopSound() {
+  exec('afplay -v 0.3 -r 0.8 /System/Library/Sounds/Bottle.aiff &', () => {});
 }
 
 function initializeServices(config) {
@@ -213,6 +228,7 @@ function initializeServices(config) {
 function startSession(config) {
   if (sessionActive) return;
 
+  currentConfig = config;
   sessionActive = true;
   // Remove ALL listeners before adding new ones to prevent double-firing
   transcriberService.removeAllListeners('transcript');
@@ -225,7 +241,9 @@ function startSession(config) {
 
   transcriberService.once('open', () => {
     console.debug('[speech2type] Speech recognition connection opened');
-    playSound();
+    playStartSound();
+    // Announce ready via TTS
+    exec('say -v Samantha "I\'m listening" &', () => {});
   });
   transcriberService.once('close', () => {
     console.debug('[speech2type] Speech recognition connection closed');
@@ -405,6 +423,19 @@ function startSession(config) {
           await typerService.newWindow();
           playBeep();
           break;
+        case 'stop_listening':
+          if (currentConfig) {
+            stopSession(currentConfig);
+          }
+          break;
+        case 'claude_resume':
+          playBeep();
+          exec('osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\'', () => {});
+          break;
+        case 'claude_fresh':
+          playBeep();
+          exec('osascript -e \'tell application "Terminal" to do script "claude --dangerously-skip-permissions"\'', () => {});
+          break;
       }
       return;
     }
@@ -486,7 +517,7 @@ function stopSession(config) {
     pendingText = '';
   }
 
-  playSound();
+  playStopSound();
 
   console.log(chalk.bold.dim.magenta('\n⏹ Stopped listening.'));
   console.log(chalk.dim(`Press ${config.formatHotkey()} to start listening again. Press Ctrl+C to quit.`));

@@ -344,41 +344,41 @@ class TyperService extends EventEmitter {
    * Save (Cmd+S)
    */
   async save() {
-    return this.execKeystroke('s', ['command down']);
+    return this.execShortcut('s', ['command down']);
   }
 
   /**
    * Find (Cmd+F)
    */
   async find() {
-    return this.execKeystroke('f', ['command down']);
+    return this.execShortcut('f', ['command down']);
   }
 
   /**
    * New Tab (Cmd+T)
    */
   async newTab() {
-    return this.execKeystroke('t', ['command down']);
+    return this.execShortcut('t', ['command down']);
   }
 
   /**
    * Close Tab (Cmd+W)
    */
   async closeTab() {
-    return this.execKeystroke('w', ['command down']);
+    return this.execShortcut('w', ['command down']);
   }
 
   /**
    * New Window (Cmd+N)
    */
   async newWindow() {
-    return this.execKeystroke('n', ['command down']);
+    return this.execShortcut('n', ['command down']);
   }
 
   /**
-   * Helper to execute a keystroke with modifiers
+   * Helper to execute a keyboard shortcut with modifiers
    */
-  async execKeystroke(key, modifiers = []) {
+  async execShortcut(key, modifiers = []) {
     const modString = modifiers.length > 0 ? ` using {${modifiers.join(', ')}}` : '';
     const script = `tell application "System Events" to keystroke "${key}"${modString}`;
     try {
@@ -388,10 +388,10 @@ class TyperService extends EventEmitter {
           resolve();
         });
       });
-      console.debug(`[typer] Keystroke: ${key} with ${modifiers.join('+') || 'no modifiers'}`);
+      console.debug(`[typer] Shortcut: ${key} with ${modifiers.join('+') || 'no modifiers'}`);
       return true;
     } catch (error) {
-      console.error(`[typer] Error keystroke ${key}:`, error);
+      console.error(`[typer] Error shortcut ${key}:`, error);
       return false;
     }
   }
