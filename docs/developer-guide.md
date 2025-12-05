@@ -2,12 +2,20 @@
 
 This guide explains how to add new voice commands to speech2type, including best practices for speech recognition reliability.
 
+> **Note:** For creating new modes with their own command sets (like Ableton Live control), see the [Addon Developer Guide](addon-developer-guide.md). This guide focuses on adding general commands available in all modes.
+
 ## Architecture Overview
+
+speech2type uses a mode-based architecture:
+
+1. **General Mode** - Default mode with core commands (in `src/index.js`)
+2. **Addon Modes** - Custom modes loaded from `addons/` directory
+3. **Claude Mode** - Power mode for Claude Code integration
 
 Voice commands are processed in `src/index.js`:
 
-1. **Static Commands** (`GENERAL_COMMANDS`, `ABLETON_COMMANDS`) - Exact phrase matches
-2. **Dynamic Patterns** (`ABLETON_PATTERNS`) - Regex patterns for parameterized commands
+1. **Static Commands** (`GENERAL_COMMANDS`) - Exact phrase matches available in all modes
+2. **Addon Commands** - Mode-specific commands from addon modules
 3. **Action Handlers** - Switch statement that executes the action
 
 ## Adding Static Commands
@@ -132,68 +140,25 @@ case 'ableton_volume':
   break;
 ```
 
-## Adding Ableton OSC Commands
+## Addon-Specific Commands
 
-### 1. Add to AbletonService
+For mode-specific commands (like Ableton Live control), create an addon instead of modifying core files. See the [Addon Developer Guide](addon-developer-guide.md) for details.
 
-In `src/services/ableton.js`:
-
-```javascript
-class AbletonService {
-  // Add new method
-  newCommand(param) {
-    this.send('/live/osc/address', param);
-  }
-}
-```
-
-### 2. OSC Address Reference
-
-Common AbletonOSC addresses:
-
-| Category | Address | Arguments |
-|----------|---------|-----------|
-| **Transport** | | |
-| Play | `/live/song/start_playing` | - |
-| Stop | `/live/song/stop_playing` | - |
-| Continue | `/live/song/continue_playing` | - |
-| Record | `/live/song/trigger_session_record` | - |
-| **Song** | | |
-| Set tempo | `/live/song/set/tempo` | `float bpm` |
-| Set metronome | `/live/song/set/metronome` | `int 0/1` |
-| Set loop | `/live/song/set/loop` | `int 0/1` |
-| Undo | `/live/song/undo` | - |
-| Redo | `/live/song/redo` | - |
-| **Track** (0-indexed) | | |
-| Mute | `/live/track/set/mute` | `int track, int 0/1` |
-| Solo | `/live/track/set/solo` | `int track, int 0/1` |
-| Arm | `/live/track/set/arm` | `int track, int 0/1` |
-| Volume | `/live/track/set/volume` | `int track, float 0.0-1.0` |
-| Select | `/live/view/set/selected_track` | `int track` |
-| **Scene** (0-indexed) | | |
-| Fire | `/live/scene/fire` | `int scene` |
-| **Clip** (0-indexed) | | |
-| Fire | `/live/clip_slot/fire` | `int track, int slot` |
-| Stop | `/live/track/stop_all_clips` | `int track` |
-| **Create** | | |
-| Audio track | `/live/song/create_audio_track` | `int position (-1 = end)` |
-| MIDI track | `/live/song/create_midi_track` | `int position (-1 = end)` |
-| Return track | `/live/song/create_return_track` | - |
-| Scene | `/live/song/create_scene` | `int position (-1 = end)` |
-
-### 3. Index Conversion
-
-User speaks 1-indexed, OSC uses 0-indexed. Convert in the service:
-
-```javascript
-muteTrack(trackNum) {
-  this.send('/live/track/set/mute', trackNum - 1, 1);  // Convert to 0-indexed
-}
-```
+The Ableton addon in `addons/ableton/` is a complete example showing:
+- OSC communication
+- Extensive command variations
+- Dynamic patterns with parameters
+- Push-to-talk mode
 
 ## Testing
 
-### Test OSC Commands Directly
+### Test General Commands
+
+1. Run `s2t start` or `npm run dev`
+2. Say commands and check console output
+3. Use `DEBUG=1 s2t start` for verbose logging
+
+### Test Addon Commands (e.g., Ableton)
 
 ```bash
 node scripts/test-ableton.js <command> [args]
@@ -204,17 +169,6 @@ Example:
 node scripts/test-ableton.js play
 node scripts/test-ableton.js tempo 120
 node scripts/test-ableton.js mute 1
-```
-
-### Adding Test Commands
-
-Edit `scripts/test-ableton.js`:
-
-```javascript
-const commands = {
-  mycommand: () => client.send('/live/osc/address'),
-  mycommand2: (arg) => client.send('/live/osc/address', parseInt(arg)),
-};
 ```
 
 ## Best Practices
