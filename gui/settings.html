@@ -112,37 +112,41 @@
 
     /* Collapsible command sections */
     .command-section {
-      margin-bottom: 8px;
-      border-radius: 10px;
+      margin-bottom: 6px;
+      border-radius: 8px;
       overflow: hidden;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .command-section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
+      padding: 10px 14px;
       cursor: pointer;
       user-select: none;
       transition: background 0.15s;
     }
 
     .command-section-header:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .command-section-title {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-weight: 500;
-      color: #e5e5e5;
+      gap: 8px;
+      font-weight: 400;
+      font-size: 12px;
+      color: #999;
+      letter-spacing: 0.3px;
     }
 
     .command-section-title .chevron {
       transition: transform 0.2s;
-      color: #666;
+      color: #555;
+      width: 10px;
+      height: 10px;
     }
 
     .command-section.collapsed .chevron {
@@ -155,49 +159,52 @@
     }
 
     .command-section-content {
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      max-height: 2000px;
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.25s ease-out;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .command-section-content-inner {
       overflow: hidden;
-      transition: max-height 0.3s ease, padding 0.3s ease;
-      padding: 0 16px;
+      padding: 4px 14px 8px 14px;
     }
 
     .command-section.collapsed .command-section-content {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
+      grid-template-rows: 0fr;
       border-top: none;
     }
 
+    .command-section.collapsed .command-section-content-inner {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
     .command-section-content .command-item {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 6px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 12px;
     }
 
-    .command-section-content .command-item:last-child {
-      border-bottom: none;
-    }
-
     .command-section-content .command-phrase {
-      color: #22c55e;
-      font-size: 11px;
+      color: #4ade80;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.2px;
     }
 
     .command-section-content .command-action {
-      color: #888;
+      color: #666;
       font-size: 11px;
+      font-weight: 300;
     }
 
     .command-count {
-      font-size: 11px;
-      color: #666;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 2px 8px;
-      border-radius: 10px;
+      font-size: 10px;
+      color: #555;
+      font-weight: 400;
     }
 
     .custom-command-delete-bg {
@@ -2183,16 +2190,15 @@
 
     function renderCommandSection(name, section, addonName, collapsed = false) {
       const commandCount = section.commands.length;
-      const prefix = section.prefix ? `"${section.prefix} ` : '"';
-      const suffix = section.prefix ? '"' : '"';
+      const prefix = section.prefix ? `${section.prefix} ` : '';
       const collapsedClass = collapsed ? ' collapsed' : '';
 
       const editButton = section.editable && addonName ?
-        `<button class="btn btn-secondary edit-section-btn" data-addon="${addonName}" style="padding: 4px 10px; font-size: 11px;">Edit</button>` : '';
+        `<button class="btn btn-secondary edit-section-btn" data-addon="${addonName}" style="padding: 3px 8px; font-size: 10px;">Edit</button>` : '';
 
       const commandsHtml = section.commands.map(cmd => `
         <div class="command-item${cmd.isCustom ? ' custom-command' : ''}">
-          <span class="command-phrase">${prefix}${cmd.phrase}${suffix}${cmd.isCustom ? ' <span style="color: #22c55e; font-size: 10px;">★</span>' : ''}</span>
+          <span class="command-phrase">${prefix}${cmd.phrase}${cmd.isCustom ? ' <span style="color: #4ade80; font-size: 9px; opacity: 0.7;">★</span>' : ''}</span>
           <span class="command-action">${cmd.action}</span>
         </div>
       `).join('');
@@ -2201,7 +2207,7 @@
         <div class="command-section${collapsedClass}">
           <div class="command-section-header">
             <div class="command-section-title">
-              <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
               <span>${name}</span>
@@ -2212,7 +2218,9 @@
             </div>
           </div>
           <div class="command-section-content">
-            ${commandsHtml}
+            <div class="command-section-content-inner">
+              ${commandsHtml}
+            </div>
           </div>
         </div>
       `;
