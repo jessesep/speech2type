@@ -11,33 +11,81 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #1a1a1a;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: rgba(30, 30, 30, 0.95);
       color: #e5e5e5;
-      padding: 20px;
+      padding: 50px 20px 20px 20px; /* Extra top padding for title bar */
       user-select: none;
+      -webkit-app-region: drag;
+      min-height: 100vh;
+    }
+
+    /* Make interactive elements clickable */
+    input, select, button, label, .setting-row, .tab {
+      -webkit-app-region: no-drag;
+    }
+
+    /* Tab navigation */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: #a3a3a3;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: #e5e5e5;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
     }
 
     h1 {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       color: #fff;
     }
 
     h2 {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 600;
-      margin: 20px 0 10px 0;
-      color: #a3a3a3;
+      margin: 16px 0 8px 0;
+      color: #737373;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .setting-group {
-      background: #262626;
-      border-radius: 8px;
-      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
       margin-bottom: 12px;
     }
 
@@ -45,16 +93,30 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #333;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
     }
 
     .setting-row:last-child {
       border-bottom: none;
     }
 
+    .setting-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .setting-row.clickable {
+      cursor: pointer;
+    }
+
+    .setting-info {
+      flex: 1;
+    }
+
     .setting-label {
       font-size: 14px;
+      font-weight: 500;
     }
 
     .setting-description {
@@ -63,11 +125,45 @@
       margin-top: 2px;
     }
 
+    /* Status indicator */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.running {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+    }
+
+    .status-badge.stopped {
+      background: rgba(107, 114, 128, 0.2);
+      color: #9ca3af;
+    }
+
+    .status-badge.listening {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
     /* Toggle switch */
     .toggle {
       position: relative;
       width: 44px;
-      height: 24px;
+      height: 26px;
+      flex-shrink: 0;
     }
 
     .toggle input {
@@ -85,19 +181,20 @@
       bottom: 0;
       background-color: #404040;
       transition: 0.2s;
-      border-radius: 24px;
+      border-radius: 26px;
     }
 
     .toggle-slider:before {
       position: absolute;
       content: "";
-      height: 20px;
-      width: 20px;
+      height: 22px;
+      width: 22px;
       left: 2px;
       bottom: 2px;
       background-color: white;
       transition: 0.2s;
       border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
     input:checked + .toggle-slider {
@@ -105,214 +202,578 @@
     }
 
     input:checked + .toggle-slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px);
+    }
+
+    /* Text input */
+    input[type="text"],
+    input[type="password"] {
+      background: rgba(0, 0, 0, 0.3);
+      color: #e5e5e5;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 200px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #22c55e;
+    }
+
+    input[type="text"]::placeholder {
+      color: #525252;
     }
 
     /* Select dropdown */
     select {
-      background: #404040;
+      background: rgba(0, 0, 0, 0.3);
       color: #e5e5e5;
-      border: none;
-      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
+      min-width: 140px;
     }
 
     select:focus {
       outline: none;
-      box-shadow: 0 0 0 2px #22c55e;
+      border-color: #22c55e;
     }
 
-    /* Button */
-    button {
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
       background: #22c55e;
       color: #000;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
     }
 
-    button:hover {
+    .btn-primary:hover {
       background: #16a34a;
     }
 
-    button.secondary {
-      background: #404040;
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
       color: #e5e5e5;
     }
 
-    button.secondary:hover {
-      background: #525252;
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
     }
 
-    .button-row {
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-group {
       display: flex;
-      gap: 10px;
-      margin-top: 20px;
+      gap: 8px;
     }
 
     /* Hotkey display */
     .hotkey {
-      font-family: monospace;
-      background: #404040;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      background: rgba(0, 0, 0, 0.3);
       padding: 4px 8px;
       border-radius: 4px;
-      font-size: 13px;
+      font-size: 12px;
+      color: #a3a3a3;
     }
 
-    /* Status indicator */
-    .status {
+    /* Mode selector */
+    .mode-selector {
       display: flex;
-      align-items: center;
       gap: 8px;
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .mode-option {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .mode-option:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .mode-option.selected {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .mode-option .mode-icon {
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+
+    .mode-option .mode-name {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* Service controls */
+    .service-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+    }
+
+    .footer a {
+      color: #22c55e;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .version {
+      font-size: 11px;
+      color: #525252;
+      margin-top: 8px;
+    }
+
+    /* Command reference */
+    .command-list {
+      font-size: 12px;
+    }
+
+    .command-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .command-item:last-child {
+      border-bottom: none;
+    }
+
+    .command-phrase {
+      color: #22c55e;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .command-action {
+      color: #737373;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background: #22c55e;
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
     }
 
-    .status-dot.inactive {
-      background: #737373;
-    }
-
-    .status-dot.error {
-      background: #ef4444;
+    .toast.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
-  <h1>Speech2Type Settings</h1>
-
-  <h2>Status</h2>
-  <div class="setting-group">
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Backend Status</div>
-        <div class="setting-description">Speech recognition service</div>
-      </div>
-      <div class="status">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">Running</span>
-      </div>
-    </div>
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Current Mode</div>
-      </div>
-      <select id="modeSelect">
-        <option value="general">General</option>
-        <option value="music">Music (Ableton)</option>
-        <option value="claude">Claude (Power)</option>
-      </select>
-    </div>
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab active" data-tab="general">General</button>
+    <button class="tab" data-tab="api">API Keys</button>
+    <button class="tab" data-tab="hotkeys">Hotkeys</button>
+    <button class="tab" data-tab="commands">Commands</button>
   </div>
 
-  <h2>Hotkeys</h2>
-  <div class="setting-group">
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Toggle Listening</div>
-        <div class="setting-description">Start/stop voice recognition</div>
+  <!-- General Tab -->
+  <div id="general" class="tab-content active">
+    <h2>Service Status</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Speech2Type Service</div>
+          <div class="setting-description">Voice recognition backend</div>
+        </div>
+        <span class="status-badge stopped" id="serviceStatus">
+          <span class="status-dot"></span>
+          <span id="serviceStatusText">Stopped</span>
+        </span>
       </div>
-      <span class="hotkey">⌘ ;</span>
-    </div>
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Toggle TTS</div>
-        <div class="setting-description">Enable/disable text-to-speech</div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Service Controls</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="startBtn">Start</button>
+          <button class="btn btn-secondary" id="restartBtn">Restart</button>
+          <button class="btn btn-danger" id="stopBtn">Stop</button>
+        </div>
       </div>
-      <span class="hotkey">⌘ '</span>
     </div>
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Push-to-Talk (Music Mode)</div>
-        <div class="setting-description">Hold to speak, release to submit</div>
-      </div>
-      <span class="hotkey">⌘ ⌥</span>
-    </div>
-  </div>
 
-  <h2>Text-to-Speech</h2>
-  <div class="setting-group">
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">Auto-speak Claude responses</div>
-        <div class="setting-description">Read Claude's responses aloud</div>
+    <h2>Mode</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+        <div class="mode-selector">
+          <div class="mode-option selected" data-mode="general">
+            <div class="mode-icon">🎤</div>
+            <div class="mode-name">General</div>
+          </div>
+          <div class="mode-option" data-mode="music">
+            <div class="mode-icon">🎵</div>
+            <div class="mode-name">Music</div>
+          </div>
+          <div class="mode-option" data-mode="claude">
+            <div class="mode-icon">🤖</div>
+            <div class="mode-name">Claude</div>
+          </div>
+        </div>
       </div>
-      <label class="toggle">
-        <input type="checkbox" id="ttsToggle">
-        <span class="toggle-slider"></span>
-      </label>
     </div>
-  </div>
 
-  <h2>Voice Commands</h2>
-  <div class="setting-group">
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">"affirmative"</div>
-        <div class="setting-description">Press Enter (submit)</div>
-      </div>
-    </div>
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">"retract"</div>
-        <div class="setting-description">Undo last spoken text</div>
-      </div>
-    </div>
-    <div class="setting-row">
-      <div>
-        <div class="setting-label">"computer [mode] mode"</div>
-        <div class="setting-description">Switch modes (general, music, power)</div>
+    <h2>Text-to-Speech</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Auto-speak Claude responses</div>
+          <div class="setting-description">Read responses aloud using Piper TTS</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="ttsToggle">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
     </div>
   </div>
 
-  <div class="button-row">
-    <button onclick="openDocs()">View Documentation</button>
-    <button class="secondary" onclick="quitApp()">Quit Speech2Type</button>
+  <!-- API Keys Tab -->
+  <div id="api" class="tab-content">
+    <h2>Speech Recognition</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Deepgram API Key</div>
+          <div class="setting-description">Required for speech-to-text. Get a free key at deepgram.com</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="deepgramKey" placeholder="Enter your API key" style="flex: 1;">
+          <button class="btn btn-secondary" id="toggleKeyVisibility">Show</button>
+          <button class="btn btn-primary" id="saveApiKey">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>Text-to-Speech (Optional)</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Piper TTS Path</div>
+          <div class="setting-description">Path to Piper TTS binary (optional, falls back to macOS say)</div>
+        </div>
+        <input type="text" id="piperPath" placeholder="/usr/local/bin/piper" style="width: 100%;">
+      </div>
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Voice Model</div>
+          <div class="setting-description">Path to Piper voice model (.onnx file)</div>
+        </div>
+        <input type="text" id="voiceModel" placeholder="~/.local/share/piper-voices/en_US-lessac-high.onnx" style="width: 100%;">
+      </div>
+    </div>
   </div>
+
+  <!-- Hotkeys Tab -->
+  <div id="hotkeys" class="tab-content">
+    <h2>Keyboard Shortcuts</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Toggle Listening</div>
+          <div class="setting-description">Start/stop voice recognition</div>
+        </div>
+        <span class="hotkey" id="hotkeyToggle">⌘ ;</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Toggle TTS</div>
+          <div class="setting-description">Enable/disable text-to-speech</div>
+        </div>
+        <span class="hotkey">⌘ '</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Stop TTS</div>
+          <div class="setting-description">Stop current speech playback</div>
+        </div>
+        <span class="hotkey">Space</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Push-to-Talk (Music Mode)</div>
+          <div class="setting-description">Hold to speak, release to submit</div>
+        </div>
+        <span class="hotkey">⌘ ⌥</span>
+      </div>
+    </div>
+
+    <h2>Custom Hotkey</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Change Toggle Hotkey</div>
+          <div class="setting-description">Click to record a new hotkey combination</div>
+        </div>
+        <button class="btn btn-secondary" id="recordHotkey">Record New Hotkey</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commands Tab -->
+  <div id="commands" class="tab-content">
+    <h2>Voice Commands</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+        <div class="command-list">
+          <div class="command-item">
+            <span class="command-phrase">"affirmative"</span>
+            <span class="command-action">Press Enter</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"retract"</span>
+            <span class="command-action">Undo last text</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer scratch"</span>
+            <span class="command-action">Clear all text</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer speech on/off"</span>
+            <span class="command-action">Toggle TTS</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer power mode"</span>
+            <span class="command-action">Claude mode</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer music mode"</span>
+            <span class="command-action">Ableton mode</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer general mode"</span>
+            <span class="command-action">General mode</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Clipboard & Editing</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+        <div class="command-list">
+          <div class="command-item">
+            <span class="command-phrase">"computer copy/paste/cut"</span>
+            <span class="command-action">Clipboard operations</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer select all"</span>
+            <span class="command-action">Select all text</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer save"</span>
+            <span class="command-action">Save (⌘S)</span>
+          </div>
+          <div class="command-item">
+            <span class="command-phrase">"computer find"</span>
+            <span class="command-action">Find (⌘F)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="#" id="docsLink">View Documentation</a>
+    <div class="version">Speech2Type v0.3.0</div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast">Saved!</div>
 
   <script>
     const { ipcRenderer, shell } = require('electron');
     const fs = require('fs');
+    const path = require('path');
 
     const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
 
-    // Initialize UI state
-    document.getElementById('ttsToggle').checked = fs.existsSync(TTS_CONTROL_FILE);
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Load initial state
+    async function loadState() {
+      const state = await ipcRenderer.invoke('get-state');
+      const config = await ipcRenderer.invoke('get-config');
+
+      // Service status
+      updateServiceStatus(state.isServiceRunning, state.isListening);
+
+      // Mode
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === state.currentMode);
+      });
+
+      // TTS
+      document.getElementById('ttsToggle').checked = state.ttsEnabled;
+
+      // API Key (masked)
+      if (config.deepgramApiKey) {
+        document.getElementById('deepgramKey').value = config.deepgramApiKey;
+      }
+
+      // Hotkey
+      if (config.hotkey) {
+        const mods = config.hotkey.modifiers || [];
+        const key = config.hotkey.key || ';';
+        const hotkeyStr = mods.map(m => m === 'cmd' ? '⌘' : m === 'shift' ? '⇧' : m === 'alt' ? '⌥' : m === 'ctrl' ? '⌃' : m).join(' ') + ' ' + key;
+        document.getElementById('hotkeyToggle').textContent = hotkeyStr;
+      }
+    }
+
+    function updateServiceStatus(running, listening) {
+      const badge = document.getElementById('serviceStatus');
+      const text = document.getElementById('serviceStatusText');
+
+      badge.className = 'status-badge ' + (running ? (listening ? 'listening' : 'running') : 'stopped');
+      text.textContent = running ? (listening ? 'Listening' : 'Running') : 'Stopped';
+
+      document.getElementById('startBtn').disabled = running;
+      document.getElementById('stopBtn').disabled = !running;
+    }
+
+    // Show toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Service controls
+    document.getElementById('startBtn').addEventListener('click', () => {
+      ipcRenderer.send('start-service');
+      setTimeout(loadState, 1000);
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', () => {
+      ipcRenderer.send('stop-service');
+      setTimeout(loadState, 500);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      ipcRenderer.send('restart-service');
+      setTimeout(loadState, 1500);
+    });
+
+    // Mode selection
+    document.querySelectorAll('.mode-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        ipcRenderer.send('set-mode', opt.dataset.mode);
+      });
+    });
 
     // TTS toggle
     document.getElementById('ttsToggle').addEventListener('change', (e) => {
-      if (e.target.checked) {
-        fs.writeFileSync(TTS_CONTROL_FILE, '');
+      ipcRenderer.send('set-tts', e.target.checked);
+    });
+
+    // API Key
+    document.getElementById('toggleKeyVisibility').addEventListener('click', () => {
+      const input = document.getElementById('deepgramKey');
+      const btn = document.getElementById('toggleKeyVisibility');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
       } else {
-        try { fs.unlinkSync(TTS_CONTROL_FILE); } catch (err) {}
+        input.type = 'password';
+        btn.textContent = 'Show';
       }
     });
 
-    // Mode select
-    document.getElementById('modeSelect').addEventListener('change', (e) => {
-      // TODO: Send to main process
-      console.log('Mode changed to:', e.target.value);
+    document.getElementById('saveApiKey').addEventListener('click', async () => {
+      const key = document.getElementById('deepgramKey').value.trim();
+      if (key) {
+        const config = await ipcRenderer.invoke('get-config');
+        config.deepgramApiKey = key;
+        await ipcRenderer.invoke('save-config', config);
+        showToast('API Key saved!');
+      }
     });
 
-    function openDocs() {
+    // Docs link
+    document.getElementById('docsLink').addEventListener('click', (e) => {
+      e.preventDefault();
       shell.openExternal('https://github.com/jessesep/speech2type');
-    }
+    });
 
-    function quitApp() {
-      const { app } = require('@electron/remote') || require('electron').remote;
-      app.quit();
-    }
+    // Listen for state updates from main process
+    ipcRenderer.on('mode-changed', (event, mode) => {
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === mode);
+      });
+    });
+
+    ipcRenderer.on('tts-changed', (event, enabled) => {
+      document.getElementById('ttsToggle').checked = enabled;
+    });
+
+    // Initial load
+    loadState();
   </script>
 </body>
 </html>
