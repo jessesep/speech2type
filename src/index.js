@@ -26,7 +26,7 @@ let isSpeaking = false;
 
 // Check if external TTS (Claude hook) is speaking
 const TTS_LOCK_FILE = '/tmp/claude-tts-speaking';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 // Clipboard watching for auto-read
 let lastClipboardContent = '';
@@ -787,8 +787,36 @@ async function startApplication(config, options = {}) {
 
   console.log(`Ready. Press ${config.formatHotkey()} to speak. Ctrl+C to quit.`);
   console.log(chalk.dim('As you speak, transcription will appear in real time at your cursor, so place it where you want to type.'));
-  console.log(chalk.dim("Press CMD+' to toggle auto-read mode. Press SPACEBAR to stop TTS."));
+  console.log(chalk.dim("Tap CTRL to quick-toggle (stops & submits). Press SPACEBAR to stop TTS."));
   hotkeyService.on('toggle', () => (sessionActive ? stopSession(config) : startSession(config)));
+
+  // Ctrl tap: quick toggle that also submits (presses Enter) when stopping
+  hotkeyService.on('ctrl_tap', async () => {
+    if (sessionActive) {
+      // Stopping - type pending text, press Enter, then stop
+      console.log(chalk.magenta('[ctrl-tap] Stopping and submitting...'));
+
+      // Type any pending text first
+      if (pendingTimeout) {
+        clearTimeout(pendingTimeout);
+        pendingTimeout = null;
+      }
+      if (pendingText) {
+        await typerService.typeText(pendingText + ' ');
+        pendingText = '';
+      }
+
+      // Press Enter to submit
+      await typerService.pressEnter();
+
+      // Stop listening
+      stopSession(config);
+    } else {
+      // Starting
+      console.log(chalk.magenta('[ctrl-tap] Starting to listen...'));
+      startSession(config);
+    }
+  });
   hotkeyService.on('toggle_auto_read', () => {
     // Toggle the Claude auto-speak control file
     const controlFile = '/tmp/claude-auto-speak';
@@ -853,6 +881,57 @@ async function startApplication(config, options = {}) {
   });
 
   hotkeyService.start();
+
+  // Watch for GUI commands via shared file
+  const guiCommandFile = '/tmp/s2t-gui-command';
+  const checkGuiCommands = () => {
+    if (existsSync(guiCommandFile)) {
+      try {
+        const command = readFileSync(guiCommandFile, 'utf8').trim();
+        exec(`rm -f ${guiCommandFile}`, () => {});
+
+        if (command === 'toggle') {
+          sessionActive ? stopSession(config) : startSession(config);
+        } else if (command === 'start') {
+          if (!sessionActive) startSession(config);
+        } else if (command === 'stop') {
+          if (sessionActive) stopSession(config);
+        } else if (command.startsWith('mode:')) {
+          const newMode = command.split(':')[1];
+          if (newMode === 'general') {
+            currentMode = 'general';
+            console.log(chalk.cyan('[mode] Switched to general mode'));
+          } else if (newMode === 'claude') {
+            currentMode = 'claude';
+            console.log(chalk.cyan('[mode] Switched to claude/power mode'));
+          } else if (newMode === 'music' && addonLoader) {
+            currentMode = 'addon';
+            addonLoader.activate('ableton');
+            console.log(chalk.cyan('[mode] Switched to music/addon mode'));
+            // Stop listening - music mode uses push-to-talk
+            if (addonLoader.isPushToTalkEnabled() && sessionActive) {
+              console.log(chalk.dim('[music mode] Push-to-talk mode: Cmd+Option to speak'));
+              stopSession(config);
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore read errors
+      }
+    }
+  };
+  setInterval(checkGuiCommands, 200);
+
+  // Write status for GUI to read
+  const updateGuiStatus = () => {
+    const status = {
+      listening: sessionActive,
+      mode: currentMode,
+      tts: existsSync('/tmp/claude-auto-speak')
+    };
+    writeFileSync('/tmp/s2t-status.json', JSON.stringify(status));
+  };
+  setInterval(updateGuiStatus, 500);
 
   // Auto-start listening if --auto flag was passed
   if (options.autoStart) {

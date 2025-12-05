@@ -18,8 +18,8 @@ class HotkeyService extends EventEmitter {
     const primaryMods = this.hotkeyConfig ? this.hotkeyConfig.modifiers.join('+') : 'cmd';
     const primaryKey = this.hotkeyConfig ? this.hotkeyConfig.key : ';';
 
-    // Secondary hotkey: Cmd+' for toggle auto-read
-    const secondaryMods = 'cmd';
+    // Secondary hotkey: Ctrl+' for toggle auto-read (using Ctrl to avoid conflict with Cmd+Option push-to-talk)
+    const secondaryMods = 'ctrl';
     const secondaryKey = "'";
 
     const args = [primaryMods, primaryKey, secondaryMods, secondaryKey];
@@ -41,6 +41,8 @@ class HotkeyService extends EventEmitter {
         this.emit('push_to_talk_start');
       } else if (trimmed === 'PUSH_TO_TALK_END') {
         this.emit('push_to_talk_end');
+      } else if (trimmed === 'CTRL_TAP') {
+        this.emit('ctrl_tap');
       }
     });
 

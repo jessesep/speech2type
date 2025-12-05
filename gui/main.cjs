@@ -5,14 +5,20 @@
  * Shows animated status indicator and provides controls for the service.
  */
 
-const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain, globalShortcut } = require('electron');
+console.log('Starting Speech2Type GUI...');
+
+const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain, globalShortcut, shell } = require('electron');
 const path = require('path');
 const { spawn, exec, execSync } = require('child_process');
 const fs = require('fs');
 
+console.log('Modules loaded');
+
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
+console.log('Got lock:', gotTheLock);
 if (!gotTheLock) {
+  console.log('Another instance is running, quitting...');
   app.quit();
 }
 
@@ -34,6 +40,7 @@ let animationFrame = 0;
 const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
 const TTS_SPEAKING_FILE = '/tmp/claude-tts-speaking';
 const S2T_STATUS_FILE = '/tmp/s2t-status.json';
+const S2T_COMMAND_FILE = '/tmp/s2t-command';
 const projectRoot = path.join(__dirname, '..');
 
 // Config file path (same as speech2type uses)
@@ -44,105 +51,183 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const icons = {};
 
 /**
- * Create SVG-based tray icon
+ * Create tray icon using nativeImage - Mode-specific animations
  * @param {string} state - idle, listening, speaking, processing, error, disabled
- * @param {number} frame - animation frame (0-3) for pulsing effect
+ * @param {number} frame - animation frame (0-15) for smooth wave animation
  */
 function createTrayIcon(state, frame = 0) {
-  const size = 22;
-  const cacheKey = `${state}-${frame}`;
+  const width = 16;
+  const height = 16;
+  const cacheKey = `${state}-${frame}-${currentMode}`;
 
   if (icons[cacheKey]) {
     return icons[cacheKey];
   }
 
-  let svg;
-  const pulseOpacity = (0.5 + (Math.sin(frame * Math.PI / 2) * 0.5)).toFixed(2); // Pulse between 0.5 and 1.0
+  // Colors for different states (RGBA)
+  const colorMap = {
+    listening: [90, 200, 130, 255],   // Soft green
+    speaking: [100, 160, 240, 255],   // Soft blue
+    processing: [240, 180, 70, 255],  // Soft amber
+    error: [230, 100, 100, 255],      // Soft red
+    disabled: [120, 120, 120, 255],   // Gray
+    idle: [0, 0, 0, 255]              // Black (template)
+  };
 
-  switch (state) {
-    case 'listening':
-      // Green microphone with pulse animation
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="11" cy="11" r="9" fill="#22c55e" opacity="${(pulseOpacity * 0.3).toFixed(2)}"/>
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="#22c55e"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="#22c55e" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="#22c55e" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="#22c55e" stroke-width="2"/>
-      </svg>`;
-      break;
-
-    case 'speaking':
-      // Blue with sound waves
-      const wave1 = pulseOpacity;
-      const wave2 = (1 - parseFloat(pulseOpacity)).toFixed(2);
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="#3b82f6"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="#3b82f6" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="#3b82f6" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="#3b82f6" stroke-width="2"/>
-        <path d="M18 7 q3 4 0 8" stroke="#3b82f6" stroke-width="1.5" fill="none" opacity="${wave1}"/>
-        <path d="M20 5 q4 6 0 12" stroke="#3b82f6" stroke-width="1.5" fill="none" opacity="${wave2}"/>
-      </svg>`;
-      break;
-
-    case 'processing':
-      // Yellow/orange processing indicator
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="#f59e0b"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="#f59e0b" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="#f59e0b" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="#f59e0b" stroke-width="2"/>
-        <circle cx="11" cy="7" r="2" fill="white" opacity="${pulseOpacity}"/>
-      </svg>`;
-      break;
-
-    case 'error':
-      // Red microphone with X
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="#ef4444"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="#ef4444" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="#ef4444" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="#ef4444" stroke-width="2"/>
-        <line x1="8" y1="5" x2="14" y2="11" stroke="white" stroke-width="2"/>
-        <line x1="14" y1="5" x2="8" y2="11" stroke="white" stroke-width="2"/>
-      </svg>`;
-      break;
-
-    case 'disabled':
-      // Gray with slash
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="#6b7280"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="#6b7280" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="#6b7280" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="#6b7280" stroke-width="2"/>
-        <line x1="4" y1="18" x2="18" y2="4" stroke="#ef4444" stroke-width="2"/>
-      </svg>`;
-      break;
-
-    default: // idle
-      // Gray microphone - template image for dark/light mode
-      svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="2" width="8" height="11" rx="4" fill="black"/>
-        <path d="M5 9 v2 a6 6 0 0 0 12 0 v-2" stroke="black" stroke-width="2" fill="none"/>
-        <line x1="11" y1="17" x2="11" y2="20" stroke="black" stroke-width="2"/>
-        <line x1="7" y1="20" x2="15" y2="20" stroke="black" stroke-width="2"/>
-      </svg>`;
+  // Mode-specific colors when listening
+  if (state === 'listening') {
+    if (currentMode === 'claude') {
+      colorMap.listening = [217, 119, 87, 255];  // Claude orange/terracotta
+    } else if (currentMode === 'music') {
+      colorMap.listening = [0, 210, 211, 255];   // Ableton teal/cyan
+    }
   }
 
-  // Convert SVG to data URL for proper rendering
-  const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-  const img = nativeImage.createFromDataURL(dataUrl);
+  const [r, g, b, a] = colorMap[state] || colorMap.idle;
+  const isTemplate = state === 'idle';
+  const isAnimated = state === 'listening' || state === 'speaking' || state === 'processing';
 
-  // Make idle icon a template image for proper dark/light mode support
-  if (state === 'idle') {
-    img.setTemplateImage(true);
+  const buffer = Buffer.alloc(width * height * 4);
+
+  // Choose icon style based on mode
+  if (currentMode === 'claude' && isAnimated) {
+    // Claude mode: pulsing dot (AI/thinking indicator)
+    drawClaudeIcon(buffer, width, height, r, g, b, a, frame);
+  } else if (currentMode === 'music' && isAnimated) {
+    // Music mode: bouncing bars (equalizer style)
+    drawMusicIcon(buffer, width, height, r, g, b, a, frame);
+  } else {
+    // General mode: waveform bars
+    drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated);
   }
 
-  // Resize for proper menu bar display (@2x for Retina)
-  const resized = img.resize({ width: size, height: size, quality: 'best' });
+  const icon = nativeImage.createFromBuffer(buffer, { width, height });
 
-  icons[cacheKey] = resized;
-  return resized;
+  if (isTemplate) {
+    icon.setTemplateImage(true);
+  }
+
+  icons[cacheKey] = icon;
+  return icon;
+}
+
+/**
+ * Draw waveform bars (general mode)
+ */
+function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated) {
+  const barWidth = 2;
+  const gap = 3;
+  const totalWidth = 3 * barWidth + 2 * gap;
+  const startX = Math.floor((width - totalWidth) / 2);
+  const minH = 3;
+  const maxH = 11;
+
+  const getBarHeight = (barIndex) => {
+    if (!isAnimated) {
+      return [5, 8, 5][barIndex];
+    }
+    const phase = (frame / 16) * Math.PI * 2 + barIndex * 0.8;
+    const wave = Math.sin(phase);
+    return Math.round(minH + (maxH - minH) * (0.5 + wave * 0.45));
+  };
+
+  for (let barIndex = 0; barIndex < 3; barIndex++) {
+    const barX = startX + barIndex * (barWidth + gap);
+    const barHeight = getBarHeight(barIndex);
+    const barTop = Math.floor((height - barHeight) / 2);
+
+    for (let y = barTop; y < barTop + barHeight; y++) {
+      for (let x = barX; x < barX + barWidth; x++) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          const idx = (y * width + x) * 4;
+          let alpha = a;
+          if (y === barTop || y === barTop + barHeight - 1) {
+            alpha = Math.round(a * 0.7);
+          }
+          buffer[idx] = r;
+          buffer[idx + 1] = g;
+          buffer[idx + 2] = b;
+          buffer[idx + 3] = alpha;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Draw Claude mode icon - pulsing concentric circles (thinking/AI)
+ */
+function drawClaudeIcon(buffer, width, height, r, g, b, a, frame) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Pulsing effect
+  const pulse = Math.sin((frame / 16) * Math.PI * 2) * 0.3 + 0.7;
+  const innerRadius = 2;
+  const outerRadius = 5 + Math.sin((frame / 16) * Math.PI * 2) * 1.5;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x - centerX + 0.5;
+      const dy = y - centerY + 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const idx = (y * width + x) * 4;
+
+      // Inner solid dot
+      if (dist <= innerRadius) {
+        buffer[idx] = r;
+        buffer[idx + 1] = g;
+        buffer[idx + 2] = b;
+        buffer[idx + 3] = a;
+      }
+      // Outer pulsing ring
+      else if (dist >= outerRadius - 1 && dist <= outerRadius + 0.5) {
+        const ringAlpha = Math.round(a * pulse * 0.6);
+        buffer[idx] = r;
+        buffer[idx + 1] = g;
+        buffer[idx + 2] = b;
+        buffer[idx + 3] = ringAlpha;
+      }
+    }
+  }
+}
+
+/**
+ * Draw Music mode icon - equalizer bars bouncing
+ */
+function drawMusicIcon(buffer, width, height, r, g, b, a, frame) {
+  // 4 thin bars like an equalizer
+  const barWidth = 2;
+  const gap = 2;
+  const numBars = 4;
+  const totalWidth = numBars * barWidth + (numBars - 1) * gap;
+  const startX = Math.floor((width - totalWidth) / 2);
+  const minH = 2;
+  const maxH = 12;
+
+  for (let barIndex = 0; barIndex < numBars; barIndex++) {
+    // Each bar bounces with different phase
+    const phase = (frame / 16) * Math.PI * 2 + barIndex * 1.2;
+    const bounce = Math.abs(Math.sin(phase));
+    const barHeight = Math.round(minH + (maxH - minH) * bounce);
+    const barX = startX + barIndex * (barWidth + gap);
+    const barTop = height - 2 - barHeight; // Anchor at bottom
+
+    for (let y = barTop; y < barTop + barHeight; y++) {
+      for (let x = barX; x < barX + barWidth; x++) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          const idx = (y * width + x) * 4;
+          // Gradient from top (lighter) to bottom (full color)
+          const gradientFactor = (y - barTop) / barHeight;
+          const alpha = Math.round(a * (0.5 + gradientFactor * 0.5));
+          buffer[idx] = r;
+          buffer[idx + 1] = g;
+          buffer[idx + 2] = b;
+          buffer[idx + 3] = alpha;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -152,9 +237,9 @@ function startAnimation() {
   if (animationInterval) return;
 
   animationInterval = setInterval(() => {
-    animationFrame = (animationFrame + 1) % 4;
+    animationFrame = (animationFrame + 1) % 16;
     updateTrayIcon();
-  }, 300);
+  }, 80); // Smooth 16-frame animation
 }
 
 /**
@@ -323,18 +408,25 @@ function buildContextMenu() {
 }
 
 /**
+ * Send command to s2t backend via shared file
+ */
+function sendCommand(command) {
+  const commandFile = '/tmp/s2t-gui-command';
+  try {
+    fs.writeFileSync(commandFile, command);
+    console.log(`[gui] Sent command: ${command}`);
+  } catch (e) {
+    console.error('Failed to send command:', e);
+  }
+}
+
+/**
  * Toggle listening state
  */
 function toggleListening() {
   if (!isServiceRunning) return;
 
-  isListening = !isListening;
-  updateTrayIcon();
-  tray.setContextMenu(buildContextMenu());
-
-  // Send signal to s2t process via IPC or file
-  // For now, we'll use the hotkey mechanism
-  console.log(`Listening: ${isListening}`);
+  sendCommand('toggle');
 }
 
 /**
@@ -345,12 +437,13 @@ function setMode(mode) {
   tray.setContextMenu(buildContextMenu());
   updateTrayIcon();
 
+  // Send mode change to backend
+  sendCommand(`mode:${mode}`);
+
   // Notify settings window if open
   if (settingsWindow) {
     settingsWindow.webContents.send('mode-changed', mode);
   }
-
-  console.log(`Mode set to: ${mode}`);
 }
 
 /**
@@ -485,18 +578,36 @@ function openSettings() {
 }
 
 /**
- * Watch for TTS state changes
+ * Watch for state changes from backend
  */
 function startStateWatcher() {
   setInterval(() => {
     const prevSpeaking = isSpeaking;
+    const prevListening = isListening;
+
     checkTTSState();
 
-    if (prevSpeaking !== isSpeaking) {
+    // Read status from backend
+    try {
+      if (fs.existsSync(S2T_STATUS_FILE)) {
+        const status = JSON.parse(fs.readFileSync(S2T_STATUS_FILE, 'utf8'));
+        isListening = status.listening;
+        if (status.mode === 'addon') {
+          currentMode = 'music';
+        } else {
+          currentMode = status.mode;
+        }
+        ttsEnabled = status.tts;
+      }
+    } catch (e) {
+      // Ignore read errors
+    }
+
+    if (prevSpeaking !== isSpeaking || prevListening !== isListening) {
       updateTrayIcon();
       tray.setContextMenu(buildContextMenu());
     }
-  }, 500);
+  }, 300);
 }
 
 // IPC handlers for settings window
@@ -516,18 +627,33 @@ ipcMain.on('set-tts', (event, enabled) => {
 ipcMain.on('start-service', () => startS2T());
 ipcMain.on('stop-service', () => stopS2T());
 ipcMain.on('restart-service', () => restartS2T());
+ipcMain.on('open-external', (event, url) => shell.openExternal(url));
 
 // App lifecycle
 app.whenReady().then(() => {
+  console.log('App ready, creating tray...');
+
   // Hide dock icon (menu bar app only)
   if (app.dock) {
     app.dock.hide();
+    console.log('Dock icon hidden');
   }
 
   // Create tray
-  tray = new Tray(createTrayIcon('idle'));
-  tray.setToolTip('Speech2Type');
-  tray.setContextMenu(buildContextMenu());
+  try {
+    const icon = createTrayIcon('idle');
+    console.log('Icon created:', icon ? 'success' : 'failed');
+    console.log('Icon empty?', icon.isEmpty());
+
+    tray = new Tray(icon);
+    console.log('Tray created');
+
+    tray.setToolTip('Speech2Type');
+    tray.setContextMenu(buildContextMenu());
+    console.log('Context menu set');
+  } catch (err) {
+    console.error('Error creating tray:', err);
+  }
 
   // Click behavior: left-click shows menu (standard macOS behavior)
   // Could change to toggle listening with: tray.on('click', toggleListening);

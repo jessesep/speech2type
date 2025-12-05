@@ -16,7 +16,17 @@ export const metadata = {
   description: 'Voice control for Ableton Live via OSC',
   author: 'speech2type',
   modeCommand: 'music mode',  // "computer music mode" activates this addon
-  modeAliases: ['ableton mode'],  // Alternative activation phrases
+  modeAliases: [
+    // Ableton tonal variations (speech recognition mishears)
+    'ableton mode',
+    'able ton mode',
+    'able to mode',
+    'able turn mode',
+    'ablton mode',
+    'abelton mode',
+    'ableten mode',
+    'able ten mode',
+  ],
   pushToTalk: true,  // Enable push-to-talk behavior (Cmd+Option)
   pushToTalkAutoSubmit: true,  // Auto-submit on release
 };

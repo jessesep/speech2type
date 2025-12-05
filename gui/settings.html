@@ -288,6 +288,17 @@
       gap: 8px;
     }
 
+    .btn.recording {
+      background: #22c55e;
+      color: #000;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
     /* Hotkey display */
     .hotkey {
       font-family: 'SF Mono', Monaco, 'Courier New', monospace;
@@ -359,10 +370,25 @@
       text-decoration: underline;
     }
 
+    .made-with {
+      font-size: 12px;
+      color: #737373;
+      margin-top: 8px;
+    }
+
+    .made-with a {
+      color: #22c55e;
+      text-decoration: none;
+    }
+
+    .made-with a:hover {
+      text-decoration: underline;
+    }
+
     .version {
       font-size: 11px;
       color: #525252;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     /* Command reference */
@@ -531,10 +557,10 @@
       </div>
       <div class="setting-row">
         <div class="setting-info">
-          <div class="setting-label">Toggle TTS</div>
-          <div class="setting-description">Enable/disable text-to-speech</div>
+          <div class="setting-label">Quick Toggle</div>
+          <div class="setting-description">Tap to start/stop listening (auto-submits on stop)</div>
         </div>
-        <span class="hotkey">⌘ '</span>
+        <span class="hotkey">⌃ tap</span>
       </div>
       <div class="setting-row">
         <div class="setting-info">
@@ -546,9 +572,17 @@
       <div class="setting-row">
         <div class="setting-info">
           <div class="setting-label">Push-to-Talk (Music Mode)</div>
-          <div class="setting-description">Hold to speak, release to submit</div>
+          <div class="setting-description">Hold to speak, release to auto-submit</div>
         </div>
         <span class="hotkey">⌘ ⌥</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-description" style="color: #f59e0b; font-size: 11px;">
+            ⚠️ Note: Cmd+Option may produce special characters while typing.
+            Use push-to-talk only when not in a text field.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -630,6 +664,7 @@
   <!-- Footer -->
   <div class="footer">
     <a href="#" id="docsLink">View Documentation</a>
+    <div class="made-with">Made with ♥ by <a href="#" id="authorLink">@jessesep</a></div>
     <div class="version">Speech2Type v0.3.0</div>
   </div>
 
@@ -637,7 +672,7 @@
   <div class="toast" id="toast">Saved!</div>
 
   <script>
-    const { ipcRenderer, shell } = require('electron');
+    const { ipcRenderer } = require('electron');
     const fs = require('fs');
     const path = require('path');
 
@@ -680,6 +715,14 @@
         const key = config.hotkey.key || ';';
         const hotkeyStr = mods.map(m => m === 'cmd' ? '⌘' : m === 'shift' ? '⇧' : m === 'alt' ? '⌥' : m === 'ctrl' ? '⌃' : m).join(' ') + ' ' + key;
         document.getElementById('hotkeyToggle').textContent = hotkeyStr;
+      }
+
+      // Piper settings
+      if (config.piperPath) {
+        document.getElementById('piperPath').value = config.piperPath;
+      }
+      if (config.voiceModel) {
+        document.getElementById('voiceModel').value = config.voiceModel;
       }
     }
 
@@ -755,10 +798,97 @@
       }
     });
 
+    // Piper path - save on blur
+    document.getElementById('piperPath').addEventListener('blur', async () => {
+      const piperPath = document.getElementById('piperPath').value.trim();
+      const config = await ipcRenderer.invoke('get-config');
+      config.piperPath = piperPath;
+      await ipcRenderer.invoke('save-config', config);
+    });
+
+    document.getElementById('voiceModel').addEventListener('blur', async () => {
+      const voiceModel = document.getElementById('voiceModel').value.trim();
+      const config = await ipcRenderer.invoke('get-config');
+      config.voiceModel = voiceModel;
+      await ipcRenderer.invoke('save-config', config);
+    });
+
     // Docs link
     document.getElementById('docsLink').addEventListener('click', (e) => {
       e.preventDefault();
-      shell.openExternal('https://github.com/jessesep/speech2type');
+      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type');
+    });
+
+    // Author link
+    document.getElementById('authorLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('open-external', 'https://github.com/jessesep');
+    });
+
+    // Hotkey recorder
+    let isRecording = false;
+    const recordBtn = document.getElementById('recordHotkey');
+
+    recordBtn.addEventListener('click', () => {
+      if (isRecording) return;
+
+      isRecording = true;
+      recordBtn.textContent = 'Press your hotkey...';
+      recordBtn.classList.add('recording');
+
+      const handleKeydown = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Need at least one modifier
+        if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+          return;
+        }
+
+        // Build hotkey object
+        const modifiers = [];
+        if (e.metaKey) modifiers.push('cmd');
+        if (e.ctrlKey) modifiers.push('ctrl');
+        if (e.altKey) modifiers.push('alt');
+        if (e.shiftKey) modifiers.push('shift');
+
+        // Get the key (ignore modifier-only presses)
+        let key = e.key.toLowerCase();
+        if (['meta', 'control', 'alt', 'shift'].includes(key)) {
+          return;
+        }
+
+        // Save the hotkey
+        const config = await ipcRenderer.invoke('get-config');
+        config.hotkey = { modifiers, key };
+        await ipcRenderer.invoke('save-config', config);
+
+        // Update display
+        const hotkeyStr = modifiers.map(m =>
+          m === 'cmd' ? '⌘' : m === 'shift' ? '⇧' : m === 'alt' ? '⌥' : m === 'ctrl' ? '⌃' : m
+        ).join(' ') + ' ' + key;
+        document.getElementById('hotkeyToggle').textContent = hotkeyStr;
+
+        // Reset button
+        isRecording = false;
+        recordBtn.textContent = 'Record New Hotkey';
+        recordBtn.classList.remove('recording');
+        document.removeEventListener('keydown', handleKeydown, true);
+
+        showToast('Hotkey saved! Restart service to apply.');
+      };
+
+      document.addEventListener('keydown', handleKeydown, true);
+
+      // Cancel after 5 seconds
+      setTimeout(() => {
+        if (isRecording) {
+          isRecording = false;
+          recordBtn.textContent = 'Record New Hotkey';
+          recordBtn.classList.remove('recording');
+          document.removeEventListener('keydown', handleKeydown, true);
+        }
+      }, 5000);
     });
 
     // Listen for state updates from main process

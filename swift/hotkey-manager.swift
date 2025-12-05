@@ -25,6 +25,11 @@ let ttsLockFile = "/tmp/claude-tts-speaking"
 var pushToTalkActive = false
 let cmdOptionFlags: CGEventFlags = [.maskCommand, .maskAlternate]
 
+// Control key toggle for quick listening toggle
+var ctrlWasPressed = false
+var ctrlPressTime: Date? = nil
+let ctrlTapThreshold: TimeInterval = 0.3 // Must release within 300ms to count as tap
+
 // ---- Keyboard layout helpers ----
 
 private func currentKeyboardLayout() -> UnsafePointer<UCKeyboardLayout>? {
@@ -156,10 +161,13 @@ func parseHotkey(_ modifiers: String, _ key: String) -> Bool {
 func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     let flags = normalizedFlags(event.flags)
 
-    // Handle flags changed events for push-to-talk (Cmd+Option held/released)
+    // Handle flags changed events for push-to-talk (Cmd+Option held/released) and Ctrl tap
     if type == .flagsChanged {
         let hasCmdOption = flags.contains(cmdOptionFlags)
+        let hasCtrl = flags.contains(.maskControl)
+        let hasOnlyCtrl = flags == [.maskControl]
 
+        // Push-to-talk: Cmd+Option
         if hasCmdOption && !pushToTalkActive {
             // Cmd+Option pressed - start push-to-talk
             pushToTalkActive = true
@@ -171,9 +179,38 @@ func eventCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, re
             print("PUSH_TO_TALK_END")
             fflush(stdout)
         }
+
+        // Control key tap detection (for quick toggle)
+        if hasOnlyCtrl && !ctrlWasPressed {
+            // Control just pressed alone
+            ctrlWasPressed = true
+            ctrlPressTime = Date()
+        } else if !hasCtrl && ctrlWasPressed {
+            // Control released - check if it was a quick tap with no other keys
+            ctrlWasPressed = false
+            if let pressTime = ctrlPressTime {
+                let elapsed = Date().timeIntervalSince(pressTime)
+                if elapsed < ctrlTapThreshold {
+                    // Quick tap detected - emit toggle signal
+                    print("CTRL_TAP")
+                    fflush(stdout)
+                }
+            }
+            ctrlPressTime = nil
+        } else if ctrlWasPressed && !hasOnlyCtrl {
+            // Other modifier added while Ctrl held - not a tap
+            ctrlWasPressed = false
+            ctrlPressTime = nil
+        }
     }
 
     if type == .keyDown {
+        // Any key pressed while Ctrl held means it's not a tap
+        if ctrlWasPressed {
+            ctrlWasPressed = false
+            ctrlPressTime = nil
+        }
+
         let keycode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
 
         if isCapturing {
