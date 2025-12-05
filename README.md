@@ -58,7 +58,7 @@ Speech2Type has three operating modes:
 | **Music** | "computer music mode" | Ableton Live voice control with push-to-talk |
 | **Claude** | "computer power mode" | Auto-pause after submit, resume after response |
 
-See [Voice Commands](#voice-commands-1), [Modes](#-modes), and [Claude Code Integration](#claude-code-integration) for full details.
+See [Voice Commands](#-voice-commands), [Modes](#️-modes), and [Claude Code Integration](#-claude-code-integration) for full details.
 
 ### Perfect for:
 - **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)

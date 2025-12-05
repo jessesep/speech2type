@@ -102,6 +102,16 @@ const GENERAL_COMMANDS = {
   'computer powermode': 'mode_claude',
   'computer power-mode': 'mode_claude',
   'computer claude mode': 'mode_claude',
+  'computer powered mode': 'mode_claude',
+  'computer par mode': 'mode_claude',
+  'computer pour mode': 'mode_claude',
+  'computer tower mode': 'mode_claude',
+  'computer powder mode': 'mode_claude',
+  'computer hour mode': 'mode_claude',
+  'computer flower mode': 'mode_claude',
+  'computer coding mode': 'mode_claude',
+  'computer claw mode': 'mode_claude',
+  'computer cloud mode': 'mode_claude',
 };
 
 // Get active commands based on current mode
