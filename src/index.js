@@ -688,6 +688,11 @@ function startSession(config) {
         switch (action) {
           case 'enter':
             await typerService.pressEnter();
+            // In Claude mode, pause listening after submit
+            if (currentMode === 'claude' && currentConfig) {
+              console.log(chalk.cyan('[claude mode] Pausing listening - waiting for response...'));
+              stopSession(currentConfig);
+            }
             break;
           case 'newline':
             await typerService.insertNewline();
