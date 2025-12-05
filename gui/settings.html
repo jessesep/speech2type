@@ -1807,6 +1807,8 @@
 
       if (result.success) {
         showToast('Settings saved. Changes apply immediately.');
+        // Refresh commands list to show new custom commands
+        loadCommands();
       } else {
         showToast(`Failed: ${result.error}`);
       }
