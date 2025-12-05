@@ -40,14 +40,17 @@ let currentConfig = null;
 let isInitMode = true;
 
 // Voice commands - using "affirmative" as the main trigger
+// All commands require "computer" prefix except affirmative/retract
 const VOICE_COMMANDS = {
-  // Submit / Enter
+  // Submit / Enter - affirmative works without "computer" prefix
   'affirmative': 'enter',
+  'computer affirmative': 'enter',
   'computer enter': 'enter',
   'computer submit': 'enter',
 
-  // Undo last spoken chunk
+  // Undo last spoken chunk - retract works without "computer" prefix
   'retract': 'undo',
+  'computer retract': 'undo',
   'computer undo': 'undo',
 
   // Clear entire input field
@@ -73,6 +76,12 @@ const VOICE_COMMANDS = {
   // Listening control
   'computer stop listening': 'stop_listening',
   'computer stop': 'stop_listening',
+
+  // TTS control
+  'computer text to speech on': 'tts_on',
+  'computer text to speech off': 'tts_off',
+  'computer speech on': 'tts_on',
+  'computer speech off': 'tts_off',
 
   // Claude Code launch
   'computer resume': 'claude_resume',
@@ -429,6 +438,16 @@ function startSession(config) {
           if (currentConfig) {
             stopSession(currentConfig);
           }
+          break;
+        case 'tts_on':
+          exec('touch /tmp/claude-auto-speak', () => {});
+          console.log(chalk.green('[TTS] Text-to-speech ON'));
+          playBeep();
+          break;
+        case 'tts_off':
+          exec('rm -f /tmp/claude-auto-speak', () => {});
+          console.log(chalk.yellow('[TTS] Text-to-speech OFF'));
+          playBeep();
           break;
         case 'claude_resume':
           if (isInitMode) {
