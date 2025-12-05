@@ -10,16 +10,39 @@
       padding: 0;
     }
 
+    html, body {
+      overflow: hidden !important;
+      height: 100%;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
       background: rgba(30, 30, 30, 0.95);
       color: #e5e5e5;
-      padding: 40px 20px 80px 20px;
+      padding: 0;
       user-select: none;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Fixed title bar area for window buttons */
+    .title-bar {
+      height: 40px;
+      min-height: 40px;
       -webkit-app-region: drag;
-      min-height: 100vh;
-      padding-bottom: 100px;
-      -webkit-overflow-scrolling: touch;
+      flex-shrink: 0;
+    }
+
+    /* Main content area below title bar */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px;
+      overflow: hidden;
+      -webkit-app-region: drag;
     }
 
     /* Make interactive elements clickable */
@@ -66,23 +89,25 @@
     .tab-content {
       display: none;
       -webkit-app-region: no-drag;
-      overflow: hidden;
+      overflow: hidden !important;
+      flex: 1;
     }
 
     .tab-content.active {
-      display: block;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Only Commands tab is scrollable */
-    #general, #addons, #api, #hotkeys {
-      overflow: hidden !important;
-      max-height: none;
+    #commands.active {
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      padding-top: 0;
     }
 
-    #commands.active {
-      overflow-y: auto;
-      max-height: calc(100vh - 140px);
-      padding-bottom: 40px;
+    /* Add spacing at top of commands container so content doesn't go under window buttons */
+    #commandsContainer {
+      padding-top: 0;
     }
 
     /* Collapsible command sections */
@@ -131,7 +156,7 @@
 
     .command-section-content {
       border-top: 1px solid rgba(255, 255, 255, 0.05);
-      max-height: 500px;
+      max-height: 2000px;
       overflow: hidden;
       transition: max-height 0.3s ease, padding 0.3s ease;
       padding: 0 16px;
@@ -267,14 +292,14 @@
       font-weight: 500;
     }
 
-    .status-badge.running {
-      background: rgba(34, 197, 94, 0.2);
-      color: #22c55e;
-    }
-
     .status-badge.stopped {
       background: rgba(107, 114, 128, 0.2);
       color: #9ca3af;
+    }
+
+    .status-badge.idle {
+      background: rgba(234, 179, 8, 0.2);
+      color: #eab308;
     }
 
     .status-badge.listening {
@@ -287,6 +312,15 @@
       height: 6px;
       border-radius: 50%;
       background: currentColor;
+    }
+
+    .status-badge.listening .status-dot {
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
     }
 
     /* Toggle switch */
@@ -494,11 +528,12 @@
 
     /* Footer */
     .footer {
-      margin-top: 20px;
-      padding-top: 16px;
-      padding-bottom: 20px;
+      margin-top: auto;
+      padding: 16px 20px 20px 20px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
       text-align: center;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
     }
 
     .footer a {
@@ -698,6 +733,11 @@
   </style>
 </head>
 <body>
+  <!-- Title bar area for window buttons (fixed, not scrollable) -->
+  <div class="title-bar"></div>
+
+  <!-- Main content wrapper -->
+  <div class="main-content">
   <!-- Tab Navigation -->
   <div class="tabs">
     <button class="tab active" data-tab="general">General</button>
@@ -977,11 +1017,13 @@
 
   <!-- Commands Tab -->
   <div id="commands" class="tab-content">
-    <div id="commandsContainer">
+    <div id="commandsContainer" style="padding-bottom: 20px;">
       <!-- Dynamic content loaded by JavaScript -->
       <div style="text-align: center; color: #666; padding: 40px;">Loading commands...</div>
     </div>
   </div>
+
+  </div><!-- End main-content -->
 
   <!-- Footer -->
   <div class="footer">
@@ -1130,8 +1172,22 @@
       const badge = document.getElementById('serviceStatus');
       const text = document.getElementById('serviceStatusText');
 
-      badge.className = 'status-badge ' + (running ? (listening ? 'listening' : 'running') : 'stopped');
-      text.textContent = running ? (listening ? 'Listening' : 'Running') : 'Stopped';
+      // Three states: stopped, idle (running but not listening), listening
+      let state = 'stopped';
+      let stateText = 'Stopped';
+
+      if (running) {
+        if (listening) {
+          state = 'listening';
+          stateText = 'Listening';
+        } else {
+          state = 'idle';
+          stateText = 'Idle';
+        }
+      }
+
+      badge.className = 'status-badge ' + state;
+      text.textContent = stateText;
 
       document.getElementById('startBtn').disabled = running;
       document.getElementById('stopBtn').disabled = !running;
@@ -1918,7 +1974,26 @@
       document.getElementById('ttsToggle').checked = enabled;
     });
 
-    // Command sections data
+    ipcRenderer.on('listening-changed', (event, listening) => {
+      // Update service status when listening state changes
+      updateServiceStatus(true, listening);  // Service is running if we get this event
+    });
+
+    // Unified state change handler for consistent updates
+    ipcRenderer.on('state-changed', (event, state) => {
+      // Update service status
+      updateServiceStatus(state.isServiceRunning, state.isListening);
+
+      // Update mode selector
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === state.currentMode);
+      });
+
+      // Update TTS toggle
+      document.getElementById('ttsToggle').checked = state.ttsEnabled;
+    });
+
+    // Command sections data - comprehensive list of all commands
     const builtInCommands = {
       'Core Commands': {
         editable: false,
@@ -1927,33 +2002,62 @@
           { phrase: 'retract', action: 'Undo last typed text' },
           { phrase: 'new line', action: 'Insert line break' },
           { phrase: 'escape', action: 'Press Escape key' },
+          { phrase: 'silence', action: 'Stop TTS playback' },
         ]
       },
-      'System Commands': {
+      'Mode Switching': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'general mode', action: 'Switch to General mode' },
+          { phrase: 'music mode', action: 'Switch to Ableton mode' },
+          { phrase: 'ableton mode', action: 'Switch to Ableton mode' },
+          { phrase: 'power mode', action: 'Switch to Claude mode' },
+          { phrase: 'claude mode', action: 'Switch to Claude mode' },
+        ]
+      },
+      'Text-to-Speech': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'speech on', action: 'Enable TTS' },
+          { phrase: 'speech off', action: 'Disable TTS' },
+          { phrase: 'text to speech on', action: 'Enable TTS' },
+          { phrase: 'text to speech off', action: 'Disable TTS' },
+          { phrase: 'stop', action: 'Stop TTS playback' },
+        ]
+      },
+      'Text Editing': {
         editable: false,
         prefix: 'computer',
         commands: [
           { phrase: 'scratch', action: 'Clear all typed text' },
-          { phrase: 'speech on', action: 'Enable TTS' },
-          { phrase: 'speech off', action: 'Disable TTS' },
-          { phrase: 'stop', action: 'Stop TTS playback' },
-          { phrase: 'power mode', action: 'Switch to Claude mode' },
-          { phrase: 'music mode', action: 'Switch to Ableton mode' },
-          { phrase: 'general mode', action: 'Switch to General mode' },
+          { phrase: 'scratch all', action: 'Clear all typed text' },
+          { phrase: 'scratch that', action: 'Clear all typed text' },
+          { phrase: 'undo', action: 'Undo (⌘Z)' },
+          { phrase: 'redo', action: 'Redo (⌘⇧Z)' },
+          { phrase: 'select all', action: 'Select All (⌘A)' },
+          { phrase: 'delete', action: 'Delete selection' },
         ]
       },
-      'Clipboard & Editing': {
+      'Clipboard': {
         editable: false,
         prefix: 'computer',
         commands: [
           { phrase: 'copy', action: 'Copy (⌘C)' },
           { phrase: 'paste', action: 'Paste (⌘V)' },
           { phrase: 'cut', action: 'Cut (⌘X)' },
-          { phrase: 'select all', action: 'Select All (⌘A)' },
+        ]
+      },
+      'File Operations': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
           { phrase: 'save', action: 'Save (⌘S)' },
-          { phrase: 'undo', action: 'Undo (⌘Z)' },
-          { phrase: 'redo', action: 'Redo (⌘⇧Z)' },
           { phrase: 'find', action: 'Find (⌘F)' },
+          { phrase: 'new tab', action: 'New tab (⌘T)' },
+          { phrase: 'close tab', action: 'Close tab (⌘W)' },
+          { phrase: 'new window', action: 'New window (⌘N)' },
         ]
       },
       'Navigation': {
@@ -1962,9 +2066,14 @@
         commands: [
           { phrase: 'tab', action: 'Next field (Tab)' },
           { phrase: 'back tab', action: 'Previous field (⇧Tab)' },
-          { phrase: 'up/down/left/right', action: 'Arrow keys' },
-          { phrase: 'page up/down', action: 'Scroll page' },
-          { phrase: 'home/end', action: 'Go to start/end' },
+          { phrase: 'up', action: 'Arrow up' },
+          { phrase: 'down', action: 'Arrow down' },
+          { phrase: 'left', action: 'Arrow left' },
+          { phrase: 'right', action: 'Arrow right' },
+          { phrase: 'page up', action: 'Page up' },
+          { phrase: 'page down', action: 'Page down' },
+          { phrase: 'home', action: 'Go to start' },
+          { phrase: 'end', action: 'Go to end' },
         ]
       },
       'Window Management': {
@@ -1976,6 +2085,35 @@
           { phrase: 'minimize', action: 'Minimize (⌘M)' },
           { phrase: 'hide', action: 'Hide app (⌘H)' },
           { phrase: 'switch', action: 'Switch app (⌘Tab)' },
+          { phrase: 'stop listening', action: 'Stop voice recognition' },
+        ]
+      },
+      'App Switching (focus/switch to/go to/open)': {
+        editable: false,
+        commands: [
+          { phrase: 'focus terminal', action: 'Switch to Terminal' },
+          { phrase: 'focus chrome / browser / google', action: 'Switch to Chrome' },
+          { phrase: 'focus safari', action: 'Switch to Safari' },
+          { phrase: 'focus finder / files', action: 'Switch to Finder' },
+          { phrase: 'focus code / vs code / vscode', action: 'Switch to VS Code' },
+          { phrase: 'focus cursor', action: 'Switch to Cursor' },
+          { phrase: 'focus slack', action: 'Switch to Slack' },
+          { phrase: 'focus discord', action: 'Switch to Discord' },
+          { phrase: 'focus spotify / music', action: 'Switch to Spotify' },
+          { phrase: 'focus notes', action: 'Switch to Notes' },
+          { phrase: 'focus messages', action: 'Switch to Messages' },
+          { phrase: 'focus mail / email', action: 'Switch to Mail' },
+          { phrase: 'focus preview', action: 'Switch to Preview' },
+          { phrase: 'focus settings / preferences', action: 'Switch to System Settings' },
+        ]
+      },
+      'Terminal Windows': {
+        editable: false,
+        commands: [
+          { phrase: 'terminal 1/2/3...', action: 'Switch to Terminal window by number' },
+          { phrase: 'window 1/2/3...', action: 'Switch to Terminal window by number' },
+          { phrase: 'terminal [name]', action: 'Switch to Terminal with name in title' },
+          { phrase: 'window with [name]', action: 'Switch to Terminal with name in title' },
         ]
       },
     };
@@ -1985,13 +2123,11 @@
       const addons = await ipcRenderer.invoke('get-addons');
 
       let html = '';
-      let sectionIndex = 0;
 
-      // Built-in command sections - Core and System expanded, others collapsed
+      // Built-in command sections - only Core Commands expanded by default
       for (const [sectionName, section] of Object.entries(builtInCommands)) {
-        const collapsed = sectionName !== 'Core Commands' && sectionName !== 'System Commands';
+        const collapsed = sectionName !== 'Core Commands';
         html += renderCommandSection(sectionName, section, null, collapsed);
-        sectionIndex++;
       }
 
       // Addon command sections (all collapsed by default)

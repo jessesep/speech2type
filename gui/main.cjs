@@ -1203,6 +1203,7 @@ function startStateWatcher() {
     const prevSpeaking = isSpeaking;
     const prevListening = isListening;
     const prevTTS = ttsEnabled;
+    const prevMode = currentMode;
 
     checkTTSState();
 
@@ -1223,13 +1224,24 @@ function startStateWatcher() {
       // Ignore read errors
     }
 
-    if (prevSpeaking !== isSpeaking || prevListening !== isListening || prevTTS !== ttsEnabled) {
+    const stateChanged = prevSpeaking !== isSpeaking ||
+                         prevListening !== isListening ||
+                         prevTTS !== ttsEnabled ||
+                         prevMode !== currentMode;
+
+    if (stateChanged) {
       updateTrayIcon();
       tray.setContextMenu(buildContextMenu());
 
-      // Notify settings window of TTS change
-      if (prevTTS !== ttsEnabled && settingsWindow) {
-        settingsWindow.webContents.send('tts-changed', ttsEnabled);
+      // Notify settings window of all state changes
+      if (settingsWindow) {
+        // Send unified state update for consistency
+        settingsWindow.webContents.send('state-changed', {
+          isListening,
+          isServiceRunning,
+          currentMode,
+          ttsEnabled
+        });
       }
     }
   }, 300);
@@ -1255,11 +1267,19 @@ ipcMain.handle('get-addon-commands', (event, addonName) => {
     if (fs.existsSync(addonPath)) {
       const content = fs.readFileSync(addonPath, 'utf8');
 
-      // Extract commands object using regex (handles multi-line)
-      const commandsMatch = content.match(/(?:const|let|var)\s+commands\s*=\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/s);
-      if (commandsMatch) {
-        // Parse the commands - simple key: value extraction
-        const commandsStr = commandsMatch[1];
+      // Find "export const commands = {" or "const commands = {"
+      const startMatch = content.match(/(?:export\s+)?(?:const|let|var)\s+commands\s*=\s*\{/);
+      if (startMatch) {
+        const startIdx = startMatch.index + startMatch[0].length;
+        // Find the matching closing brace by counting
+        let braceCount = 1;
+        let endIdx = startIdx;
+        for (let i = startIdx; i < content.length && braceCount > 0; i++) {
+          if (content[i] === '{') braceCount++;
+          else if (content[i] === '}') braceCount--;
+          endIdx = i;
+        }
+        const commandsStr = content.substring(startIdx, endIdx);
 
         // Match patterns like 'phrase': 'action' or "phrase": "action"
         const regex = /['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]/g;
