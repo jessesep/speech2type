@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Speech2Type Settings</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #1a1a1a;
+      color: #e5e5e5;
+      padding: 20px;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 20px 0 10px 0;
+      color: #a3a3a3;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-group {
+      background: #262626;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-label {
+      font-size: 14px;
+    }
+
+    .setting-description {
+      font-size: 12px;
+      color: #737373;
+      margin-top: 2px;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #404040;
+      transition: 0.2s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #22c55e;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Select dropdown */
+    select {
+      background: #404040;
+      color: #e5e5e5;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px #22c55e;
+    }
+
+    /* Button */
+    button {
+      background: #22c55e;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    button.secondary {
+      background: #404040;
+      color: #e5e5e5;
+    }
+
+    button.secondary:hover {
+      background: #525252;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Hotkey display */
+    .hotkey {
+      font-family: monospace;
+      background: #404040;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    /* Status indicator */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    .status-dot.inactive {
+      background: #737373;
+    }
+
+    .status-dot.error {
+      background: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <h1>Speech2Type Settings</h1>
+
+  <h2>Status</h2>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Backend Status</div>
+        <div class="setting-description">Speech recognition service</div>
+      </div>
+      <div class="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Running</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Current Mode</div>
+      </div>
+      <select id="modeSelect">
+        <option value="general">General</option>
+        <option value="music">Music (Ableton)</option>
+        <option value="claude">Claude (Power)</option>
+      </select>
+    </div>
+  </div>
+
+  <h2>Hotkeys</h2>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Toggle Listening</div>
+        <div class="setting-description">Start/stop voice recognition</div>
+      </div>
+      <span class="hotkey">⌘ ;</span>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Toggle TTS</div>
+        <div class="setting-description">Enable/disable text-to-speech</div>
+      </div>
+      <span class="hotkey">⌘ '</span>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Push-to-Talk (Music Mode)</div>
+        <div class="setting-description">Hold to speak, release to submit</div>
+      </div>
+      <span class="hotkey">⌘ ⌥</span>
+    </div>
+  </div>
+
+  <h2>Text-to-Speech</h2>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Auto-speak Claude responses</div>
+        <div class="setting-description">Read Claude's responses aloud</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="ttsToggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <h2>Voice Commands</h2>
+  <div class="setting-group">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">"affirmative"</div>
+        <div class="setting-description">Press Enter (submit)</div>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">"retract"</div>
+        <div class="setting-description">Undo last spoken text</div>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">"computer [mode] mode"</div>
+        <div class="setting-description">Switch modes (general, music, power)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button onclick="openDocs()">View Documentation</button>
+    <button class="secondary" onclick="quitApp()">Quit Speech2Type</button>
+  </div>
+
+  <script>
+    const { ipcRenderer, shell } = require('electron');
+    const fs = require('fs');
+
+    const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
+
+    // Initialize UI state
+    document.getElementById('ttsToggle').checked = fs.existsSync(TTS_CONTROL_FILE);
+
+    // TTS toggle
+    document.getElementById('ttsToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        fs.writeFileSync(TTS_CONTROL_FILE, '');
+      } else {
+        try { fs.unlinkSync(TTS_CONTROL_FILE); } catch (err) {}
+      }
+    });
+
+    // Mode select
+    document.getElementById('modeSelect').addEventListener('change', (e) => {
+      // TODO: Send to main process
+      console.log('Mode changed to:', e.target.value);
+    });
+
+    function openDocs() {
+      shell.openExternal('https://github.com/jessesep/speech2type');
+    }
+
+    function quitApp() {
+      const { app } = require('@electron/remote') || require('electron').remote;
+      app.quit();
+    }
+  </script>
+</body>
+</html>

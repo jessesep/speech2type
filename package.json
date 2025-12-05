@@ -50,6 +50,8 @@
     "build:swift": "mkdir -p bin && swiftc -O -o bin/hotkey-manager swift/hotkey-manager.swift && swiftc -O -o bin/permission-checker swift/permission-checker.swift && swiftc -O -o bin/mic-recorder swift/mic-recorder.swift",
     "build": "npm run build:swift",
     "dev": "npm run build && ./bin/speech2type.js",
+    "gui": "electron gui/main.cjs",
+    "gui:dev": "NODE_ENV=development electron gui/main.cjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -71,6 +73,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "electron": "^39.2.5",
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "prettier": "^3.6.2"
