@@ -58,12 +58,20 @@ All notable changes to Speech2Type Enhanced will be documented in this file.
 - Hotkey manager argument count (was passing 6, now correctly passes 4)
 - Custom commands delete button now works via click (not just swipe)
 - General tab no longer scrolls (only Commands tab scrolls)
+- **Service state display**: Now shows three states - Stopped (gray), Idle (yellow), Listening (green with pulse)
+- **Scroll overlap**: Fixed content scrolling under window buttons by adding fixed title bar area
+- **State sync**: Unified state-changed event ensures GUI updates consistently for mode, listening, and TTS changes
+- **Addon commands parsing**: Fixed regex to capture all commands from addon files (was truncating at first brace)
 
 ### Changed
 - "Push-to-Talk" renamed to "Toggle Hotkey to Speak" in addon settings
 - "Remove Addon" changed to "Hide Addon" (hides from GUI, keeps files)
 - Tab font size reduced for better fit
 - Command section fonts reduced (11px) for better readability
+
+### Documentation
+- Added `docs/gui-settings.md` - Comprehensive guide to the settings GUI
+- Updated `docs/creating-addons.md` - Complete addon development guide
 
 ### Known Issues
 - **coreaudiod CPU usage**: Sometimes macOS coreaudiod process uses high CPU. Restart coreaudiod with `sudo killall coreaudiod` to fix.
