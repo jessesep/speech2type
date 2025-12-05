@@ -50,21 +50,40 @@ let claudeModeWatcher = null;
 // Voice commands - all commands require "computer" prefix except affirmative/retract
 // GENERAL mode commands (always available)
 const GENERAL_COMMANDS = {
-  // Submit / Enter - affirmative works without "computer" prefix
+  // Submit / Enter - affirmative works without "computer" prefix (+ variations)
   'affirmative': 'enter',
+  'affirmatives': 'enter',
+  'a]firmative': 'enter',
+  'affirm a tive': 'enter',
+  'affirm ative': 'enter',
+  'firm ative': 'enter',
   'computer affirmative': 'enter',
   'computer enter': 'enter',
   'computer submit': 'enter',
+  'computer send': 'enter',
+  'computer go': 'enter',
+  'computer done': 'enter',
 
-  // Undo last spoken chunk - retract works without "computer" prefix
+  // Undo last spoken chunk - retract works without "computer" prefix (+ variations)
   'retract': 'undo',
+  'retracts': 'undo',
+  'retracted': 'undo',
+  're tract': 'undo',
+  'ree tract': 'undo',
+  'detract': 'undo',
   'computer retract': 'undo',
   'computer undo': 'undo',
+  'computer oops': 'undo',
+  'computer nevermind': 'undo',
+  'computer never mind': 'undo',
 
-  // Clear entire input field
+  // Clear entire input field (+ variations) - only "scratch" to avoid accidents
   'computer scratch': 'clear_all',
   'computer scratch all': 'clear_all',
   'computer scratch that': 'clear_all',
+  'computer scrap': 'clear_all',
+  'computer scrap all': 'clear_all',
+  'computer scrap that': 'clear_all',
 
   // Clipboard operations
   'computer copy': 'copy',
@@ -81,21 +100,39 @@ const GENERAL_COMMANDS = {
   'computer close tab': 'close_tab',
   'computer new window': 'new_window',
 
-  // Listening control
+  // Listening control - variations for speech recognition
   'computer stop listening': 'stop_listening',
+  'computer stopped listening': 'stop_listening',
+  'computer stop lesson': 'stop_listening',
+  'computer stop lessening': 'stop_listening',
+  'computer stop listing': 'stop_listening',
+  'computer stop listen': 'stop_listening',
+  'computer stuff listening': 'stop_listening',
+  'computer stock listening': 'stop_listening',
+  'computer top listening': 'stop_listening',
 
-  // TTS control
+  // TTS control - variations
   'computer text to speech on': 'tts_on',
   'computer text to speech off': 'tts_off',
   'computer speech on': 'tts_on',
   'computer speech off': 'tts_off',
+  'computer speak on': 'tts_on',
+  'computer speak off': 'tts_off',
+  'computer speaking on': 'tts_on',
+  'computer speaking off': 'tts_off',
+  'computer voice on': 'tts_on',
+  'computer voice off': 'tts_off',
 
   // Claude Code launch
   'computer resume': 'claude_resume',
   'computer fresh': 'claude_fresh',
 
-  // Mode switching (always available)
+  // Mode switching (always available) - with variations
   'computer general mode': 'mode_general',
+  'computer general': 'mode_general',
+  'computer normal mode': 'mode_general',
+  'computer default mode': 'mode_general',
+  'computer regular mode': 'mode_general',
 
   // Claude/Power mode - many variations for speech recognition
   'computer power mode': 'mode_claude',
@@ -315,11 +352,13 @@ function matchAppName(spokenName) {
 }
 
 function playStartSound() {
-  exec('afplay -v 0.3 -r 1.3 /System/Library/Sounds/Bottle.aiff &', () => {});
+  // Ascending tone - Pop sound at higher pitch
+  exec('afplay -v 0.25 -r 1.5 /System/Library/Sounds/Pop.aiff &', () => {});
 }
 
 function playStopSound() {
-  exec('afplay -v 0.3 -r 0.8 /System/Library/Sounds/Bottle.aiff &', () => {});
+  // Descending tone - Morse sound at lower pitch, softer
+  exec('afplay -v 0.12 -r 0.7 /System/Library/Sounds/Morse.aiff &', () => {});
 }
 
 async function initializeServices(config) {
@@ -342,6 +381,36 @@ async function initializeServices(config) {
 async function executeGeneralAction(action) {
   switch (action) {
     case 'enter':
+      // In Ableton/addon mode with search mode active, press Enter twice (select + confirm)
+      if (currentMode === 'addon' && addonLoader) {
+        const addon = addonLoader.getActive();
+        if (addon && addon.isSearchMode && addon.isSearchMode()) {
+          // Press Enter twice: first to select search result, second to confirm/load
+          await typerService.pressEnter();
+          await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between presses
+          await typerService.pressEnter();
+          typedHistory.length = 0;
+          playBeep();
+          // Exit search mode
+          addon.setSearchMode(false);
+          addonLoader.setTempCommandsOnly(null);
+          console.log(chalk.magenta('[ableton] Search mode ended (Enter x2)'));
+          // Stop listening
+          if (currentConfig) {
+            stopSession(currentConfig);
+          }
+          return true;
+        }
+        // Not in search mode, but still in addon mode - stop listening on affirmative
+        await typerService.pressEnter();
+        typedHistory.length = 0;
+        playBeep();
+        if (currentConfig) {
+          stopSession(currentConfig);
+        }
+        return true;
+      }
+      // Normal enter for other modes
       await typerService.pressEnter();
       typedHistory.length = 0;
       playBeep();
@@ -430,15 +499,20 @@ async function executeGeneralAction(action) {
       currentMode = 'general';
       stopClaudeModeWatcher();
       if (addonLoader) addonLoader.deactivate();
-      console.log(chalk.green.bold('[mode] Switched to GENERAL mode'));
+      // TTS off by default in general mode
+      exec('rm -f /tmp/claude-auto-speak', () => {});
+      console.log(chalk.green.bold('[mode] Switched to GENERAL mode (TTS off)'));
       playBeep();
       return true;
     case 'mode_claude':
       currentMode = 'claude';
       if (addonLoader) addonLoader.deactivate();
       startClaudeModeWatcher(currentConfig);
-      console.log(chalk.cyan.bold('[mode] Switched to CLAUDE mode - listening pauses after submit, resumes after response'));
-      playBeep();
+      // TTS on by default in Claude mode
+      exec('touch /tmp/claude-auto-speak', () => {});
+      console.log(chalk.cyan.bold('[mode] Switched to CLAUDE mode - TTS on, listening pauses after submit'));
+      // Soft welcome voice - use TTS lock to prevent mic pickup
+      exec('touch /tmp/claude-tts-speaking && say -v Samantha -r 180 "welcome" && rm -f /tmp/claude-tts-speaking &', () => {});
       return true;
     default:
       return false;
@@ -628,34 +702,65 @@ function startSession(config) {
         currentMode = 'addon';
         stopClaudeModeWatcher();
         addonLoader.activate(addonName);
+
+        // Set TTS based on addon settings
+        if (addonLoader.isTTSEnabled()) {
+          exec('touch /tmp/claude-auto-speak', () => {});
+        } else {
+          exec('rm -f /tmp/claude-auto-speak', () => {});
+        }
         playBeep();
 
         // If addon has push-to-talk enabled, stop listening
         if (addonLoader.isPushToTalkEnabled() && currentConfig) {
           const meta = addonLoader.getActiveMetadata();
-          console.log(chalk.dim(`[${meta?.displayName || addonName}] Push-to-talk mode: Cmd+Option to speak`));
+          const ttsStatus = addonLoader.isTTSEnabled() ? 'TTS on' : 'TTS off';
+          console.log(chalk.dim(`[${meta?.displayName || addonName}] Push-to-talk mode: Cmd+Option to speak (${ttsStatus})`));
           stopSession(currentConfig);
         }
         isInitMode = false;
         return;
       }
 
-      // Try general action first
-      const handled = await executeGeneralAction(action);
-      if (handled) {
-        isInitMode = false;
-        return;
-      }
-
-      // Try addon action
+      // Try addon action FIRST (addon can override general actions like 'find')
       if (currentMode === 'addon' && addonLoader) {
         const result = addonLoader.executeAction(action, null);
         if (result === true) {
           playBeep();
+          isInitMode = false;
+          return;
         } else if (typeof result === 'string') {
-          // Delegate to general action (e.g., 'find' returns 'find' to use typerService)
+          // Delegate to general action
           await executeGeneralAction(result);
+          isInitMode = false;
+          return;
+        } else if (result && typeof result === 'object') {
+          // Handle special addon return values
+          if (result.action === 'search_mode') {
+            // Enter search mode: enable transcription, open search (Cmd+F)
+            addonLoader.setTempCommandsOnly(false);
+            await typerService.find();
+            console.log(chalk.magenta('[ableton] Search mode: Type your search, say "affirmative" when done'));
+            playBeep();
+          } else if (result.action === 'exit_search_mode') {
+            // Exit search mode: disable transcription, optionally stop listening
+            addonLoader.setTempCommandsOnly(null);
+            playBeep();
+            if (result.stopListening && currentConfig) {
+              stopSession(currentConfig);
+            }
+          }
+          isInitMode = false;
+          return;
         }
+        // result was false, fall through to general action
+      }
+
+      // Try general action
+      const handled = await executeGeneralAction(action);
+      if (handled) {
+        isInitMode = false;
+        return;
       }
 
       // After any command, disable init mode
@@ -706,6 +811,12 @@ function startSession(config) {
     }
 
     // No command found - buffer the text briefly in case a command follows
+    // In commandsOnly mode (e.g., Ableton), don't type any text
+    if (addonLoader && addonLoader.isCommandsOnly()) {
+      console.log(chalk.dim(`[commands-only] Ignoring text: "${text}"`));
+      return;
+    }
+
     if (pendingTimeout) {
       clearTimeout(pendingTimeout);
     }
@@ -713,7 +824,17 @@ function startSession(config) {
 
     pendingTimeout = setTimeout(async () => {
       if (pendingText && sessionActive) {
-        const typedText = pendingText + ' ';
+        let typedText = pendingText + ' ';
+
+        // In Ableton search mode, strip punctuation (it interferes with search)
+        if (currentMode === 'addon' && addonLoader) {
+          const addon = addonLoader.getActive();
+          if (addon && addon.isSearchMode && addon.isSearchMode()) {
+            typedText = typedText.replace(/[.,!?;:'"()\[\]{}]/g, '') + ' ';
+            console.log(chalk.dim(`[search mode] Stripped punctuation: "${typedText.trim()}"`));
+          }
+        }
+
         await typerService.typeText(typedText);
         playTypingSound();
         // Add to undo history
@@ -896,6 +1017,16 @@ async function startApplication(config, options = {}) {
           if (!sessionActive) startSession(config);
         } else if (command === 'stop') {
           if (sessionActive) stopSession(config);
+        } else if (command === 'reload-addons') {
+          // Hot-reload addon settings
+          if (addonLoader) {
+            addonLoader.reloadConfig();
+            console.log(chalk.green('[addons] Settings reloaded'));
+          }
+        } else if (command === 'sync-tts') {
+          // GUI toggled TTS - just log the current state (file already changed by GUI)
+          const ttsEnabled = existsSync('/tmp/claude-auto-speak');
+          console.log(chalk.magenta(`[TTS] ${ttsEnabled ? 'ENABLED' : 'DISABLED'} (synced from GUI)`));
         } else if (command.startsWith('mode:')) {
           const newMode = command.split(':')[1];
           if (newMode === 'general') {

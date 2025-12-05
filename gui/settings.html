@@ -14,55 +14,186 @@
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
       background: rgba(30, 30, 30, 0.95);
       color: #e5e5e5;
-      padding: 50px 20px 20px 20px; /* Extra top padding for title bar */
+      padding: 40px 20px 80px 20px;
       user-select: none;
       -webkit-app-region: drag;
       min-height: 100vh;
+      padding-bottom: 100px;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* Make interactive elements clickable */
-    input, select, button, label, .setting-row, .tab {
+    input, select, button, label, .setting-row, .tab, a, .footer {
       -webkit-app-region: no-drag;
     }
 
     /* Tab navigation */
     .tabs {
       display: flex;
-      gap: 4px;
+      gap: 6px;
       margin-bottom: 20px;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 4px;
-      border-radius: 8px;
+      background: transparent;
+      padding: 0;
     }
 
     .tab {
       flex: 1;
-      padding: 8px 16px;
-      border: none;
+      padding: 10px 4px;
+      border: 1px solid transparent;
       background: transparent;
-      color: #a3a3a3;
-      font-size: 13px;
+      color: #666;
+      font-size: 11px;
       font-weight: 500;
-      border-radius: 6px;
+      letter-spacing: 0.2px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-align: center;
     }
 
     .tab:hover {
-      color: #e5e5e5;
-      background: rgba(255, 255, 255, 0.05);
+      color: #aaa;
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .tab.active {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       color: #fff;
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     .tab-content {
       display: none;
+      -webkit-app-region: no-drag;
+      overflow: hidden;
     }
 
     .tab-content.active {
+      display: block;
+    }
+
+    /* Only Commands tab is scrollable */
+    #general, #addons, #api, #hotkeys {
+      overflow: hidden !important;
+      max-height: none;
+    }
+
+    #commands.active {
+      overflow-y: auto;
+      max-height: calc(100vh - 140px);
+      padding-bottom: 40px;
+    }
+
+    /* Collapsible command sections */
+    .command-section {
+      margin-bottom: 8px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .command-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .command-section-header:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .command-section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      color: #e5e5e5;
+    }
+
+    .command-section-title .chevron {
+      transition: transform 0.2s;
+      color: #666;
+    }
+
+    .command-section.collapsed .chevron {
+      transform: rotate(-90deg);
+    }
+
+    .command-section-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .command-section-content {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      max-height: 500px;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      padding: 0 16px;
+    }
+
+    .command-section.collapsed .command-section-content {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-top: none;
+    }
+
+    .command-section-content .command-item {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .command-section-content .command-item:last-child {
+      border-bottom: none;
+    }
+
+    .command-section-content .command-phrase {
+      color: #22c55e;
+      font-size: 11px;
+    }
+
+    .command-section-content .command-action {
+      color: #888;
+      font-size: 11px;
+    }
+
+    .command-count {
+      font-size: 11px;
+      color: #666;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .custom-command-delete-bg {
+      cursor: pointer;
+    }
+
+    /* Advanced mode toggle */
+    .advanced-section {
+      display: none;
+    }
+
+    body.advanced-mode .advanced-section {
+      display: block;
+    }
+
+    /* Hide advanced tabs when not in advanced mode */
+    .advanced-tab {
+      display: none;
+    }
+
+    body.advanced-mode .advanced-tab {
       display: block;
     }
 
@@ -87,6 +218,7 @@
       border-radius: 10px;
       overflow: hidden;
       margin-bottom: 12px;
+      -webkit-app-region: no-drag;
     }
 
     .setting-row {
@@ -95,7 +227,6 @@
       align-items: center;
       padding: 12px 16px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      transition: background 0.2s;
     }
 
     .setting-row:last-child {
@@ -336,8 +467,17 @@
     }
 
     .mode-option .mode-icon {
-      font-size: 24px;
       margin-bottom: 4px;
+      color: #a3a3a3;
+    }
+
+    .mode-option .mode-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .mode-option.selected .mode-icon {
+      color: #22c55e;
     }
 
     .mode-option .mode-name {
@@ -356,6 +496,7 @@
     .footer {
       margin-top: 20px;
       padding-top: 16px;
+      padding-bottom: 20px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
       text-align: center;
     }
@@ -364,16 +505,23 @@
       color: #22c55e;
       text-decoration: none;
       font-size: 12px;
+      cursor: pointer;
     }
 
     .footer a:hover {
       text-decoration: underline;
     }
 
+    #docsLink {
+      display: inline-block;
+      padding: 4px 8px;
+    }
+
     .made-with {
       font-size: 12px;
       color: #737373;
-      margin-top: 8px;
+      margin-top: 12px;
+      padding-bottom: 8px;
     }
 
     .made-with a {
@@ -436,15 +584,127 @@
     .toast.show {
       opacity: 1;
     }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      -webkit-app-region: no-drag;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: rgba(40, 40, 40, 0.98);
+      border-radius: 12px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: #a3a3a3;
+      margin-bottom: 16px;
+    }
+
+    .modal input[type="text"] {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal select {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    /* Custom command swipeable rows */
+    .custom-command-wrapper {
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1px;
+    }
+
+    .custom-command-row {
+      transition: transform 0.2s ease;
+      background: #2a2a2a;
+      position: relative;
+      z-index: 1;
+    }
+
+    .custom-command-row.swiping {
+      transition: none;
+    }
+
+    .custom-command-delete-bg {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      background: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .custom-command-row input[type="text"],
+    .custom-command-row select {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: #e5e5e5;
+      padding: 8px 12px;
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .custom-command-row input[type="text"]::placeholder {
+      color: #666;
+    }
+
+    .custom-command-row input[type="text"]:focus,
+    .custom-command-row select:focus {
+      outline: none;
+      border-color: rgba(59, 130, 246, 0.5);
+    }
   </style>
 </head>
 <body>
   <!-- Tab Navigation -->
   <div class="tabs">
     <button class="tab active" data-tab="general">General</button>
-    <button class="tab" data-tab="api">API Keys</button>
-    <button class="tab" data-tab="hotkeys">Hotkeys</button>
-    <button class="tab" data-tab="commands">Commands</button>
+    <button class="tab advanced-tab" data-tab="addons">Addons</button>
+    <button class="tab" data-tab="api">API</button>
+    <button class="tab advanced-tab" data-tab="hotkeys">Hotkeys</button>
+    <button class="tab advanced-tab" data-tab="commands">Commands</button>
   </div>
 
   <!-- General Tab -->
@@ -478,17 +738,49 @@
       <div class="setting-row" style="flex-direction: column; align-items: stretch;">
         <div class="mode-selector">
           <div class="mode-option selected" data-mode="general">
-            <div class="mode-icon">🎤</div>
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </div>
             <div class="mode-name">General</div>
           </div>
           <div class="mode-option" data-mode="music">
-            <div class="mode-icon">🎵</div>
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
             <div class="mode-name">Music</div>
           </div>
           <div class="mode-option" data-mode="claude">
-            <div class="mode-icon">🤖</div>
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+              </svg>
+            </div>
             <div class="mode-name">Claude</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Listening</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Voice Input</div>
+          <div class="setting-description">Start or stop voice recognition</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="startListeningBtn">Start Listening</button>
+          <button class="btn btn-secondary" id="stopListeningBtn">Stop Listening</button>
         </div>
       </div>
     </div>
@@ -504,6 +796,104 @@
           <input type="checkbox" id="ttsToggle">
           <span class="toggle-slider"></span>
         </label>
+      </div>
+    </div>
+
+    <h2>Settings</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Advanced Mode</div>
+          <div class="setting-description">Show addons, hotkeys, and commands tabs</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="advancedToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Addons Tab -->
+  <div id="addons" class="tab-content">
+    <h2>Installed Addons</h2>
+    <div class="setting-group" id="addonsList">
+      <div class="setting-row" style="justify-content: center; color: #737373;">
+        Loading addons...
+      </div>
+    </div>
+
+    <h2>Create New</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Create New Addon</div>
+          <div class="setting-description">Start with a template for your custom addon</div>
+        </div>
+        <button class="btn btn-primary" id="createAddonBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Addon
+        </button>
+      </div>
+    </div>
+
+    <h2>Import / Export</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Import from GitHub</div>
+          <div class="setting-description">Install addon from a GitHub repository URL</div>
+        </div>
+        <button class="btn btn-secondary" id="importGithubBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Import
+        </button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Import from Folder</div>
+          <div class="setting-description">Import addon from a local folder or .zip file</div>
+        </div>
+        <button class="btn btn-secondary" id="importLocalBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Browse
+        </button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Export Addon</div>
+          <div class="setting-description">Export an installed addon as a .zip file</div>
+        </div>
+        <button class="btn btn-secondary" id="exportAddonBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <h2>Documentation</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Create Your Own</div>
+          <div class="setting-description">
+            Learn how to build custom addons for any application
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="addonDocsLink">View Guide</button>
       </div>
     </div>
   </div>
@@ -547,117 +937,49 @@
   <!-- Hotkeys Tab -->
   <div id="hotkeys" class="tab-content">
     <h2>Keyboard Shortcuts</h2>
-    <div class="setting-group">
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Toggle Listening</div>
-          <div class="setting-description">Start/stop voice recognition</div>
-        </div>
-        <span class="hotkey" id="hotkeyToggle">⌘ ;</span>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Quick Toggle</div>
-          <div class="setting-description">Tap to start/stop listening (auto-submits on stop)</div>
-        </div>
-        <span class="hotkey">⌃ tap</span>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Stop TTS</div>
-          <div class="setting-description">Stop current speech playback</div>
-        </div>
-        <span class="hotkey">Space</span>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Push-to-Talk (Music Mode)</div>
-          <div class="setting-description">Hold to speak, release to auto-submit</div>
-        </div>
-        <span class="hotkey">⌘ ⌥</span>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-description" style="color: #f59e0b; font-size: 11px;">
-            ⚠️ Note: Cmd+Option may produce special characters while typing.
-            Use push-to-talk only when not in a text field.
-          </div>
-        </div>
+    <div class="setting-group" id="hotkeysList" style="max-height: 300px; overflow-y: auto;">
+      <div class="setting-row" style="justify-content: center; color: #737373;">
+        Loading hotkeys...
       </div>
     </div>
 
-    <h2>Custom Hotkey</h2>
     <div class="setting-group">
-      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+      <div class="setting-row">
         <div class="setting-info">
-          <div class="setting-label">Change Toggle Hotkey</div>
-          <div class="setting-description">Click to record a new hotkey combination</div>
+          <div class="setting-label">Quick Toggle (Ctrl Tap)</div>
+          <div class="setting-description">Tap Ctrl to start/stop listening (auto-submits on stop)</div>
         </div>
-        <button class="btn btn-secondary" id="recordHotkey">Record New Hotkey</button>
+        <span class="hotkey">Ctrl tap</span>
+      </div>
+    </div>
+
+    <h2>Actions</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Reset to Defaults</div>
+          <div class="setting-description">Restore all hotkeys to their default values</div>
+        </div>
+        <button class="btn btn-secondary" id="resetHotkeysBtn">Reset</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-description" style="font-size: 11px; color: #737373;">
+            Click "Record" to change a hotkey. Press any key (with or without modifiers). Changes require service restart.
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Commands Tab -->
   <div id="commands" class="tab-content">
-    <h2>Voice Commands</h2>
-    <div class="setting-group">
-      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
-        <div class="command-list">
-          <div class="command-item">
-            <span class="command-phrase">"affirmative"</span>
-            <span class="command-action">Press Enter</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"retract"</span>
-            <span class="command-action">Undo last text</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer scratch"</span>
-            <span class="command-action">Clear all text</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer speech on/off"</span>
-            <span class="command-action">Toggle TTS</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer power mode"</span>
-            <span class="command-action">Claude mode</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer music mode"</span>
-            <span class="command-action">Ableton mode</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer general mode"</span>
-            <span class="command-action">General mode</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <h2>Clipboard & Editing</h2>
-    <div class="setting-group">
-      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
-        <div class="command-list">
-          <div class="command-item">
-            <span class="command-phrase">"computer copy/paste/cut"</span>
-            <span class="command-action">Clipboard operations</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer select all"</span>
-            <span class="command-action">Select all text</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer save"</span>
-            <span class="command-action">Save (⌘S)</span>
-          </div>
-          <div class="command-item">
-            <span class="command-phrase">"computer find"</span>
-            <span class="command-action">Find (⌘F)</span>
-          </div>
-        </div>
-      </div>
+    <div id="commandsContainer">
+      <!-- Dynamic content loaded by JavaScript -->
+      <div style="text-align: center; color: #666; padding: 40px;">Loading commands...</div>
     </div>
   </div>
 
@@ -665,11 +987,97 @@
   <div class="footer">
     <a href="#" id="docsLink">View Documentation</a>
     <div class="made-with">Made with ♥ by <a href="#" id="authorLink">@jessesep</a></div>
-    <div class="version">Speech2Type v0.3.0</div>
+    <div class="version">Speech2Type Enhanced v0.4.0</div>
   </div>
 
   <!-- Toast notification -->
   <div class="toast" id="toast">Saved!</div>
+
+  <!-- GitHub Import Modal -->
+  <div class="modal-overlay" id="githubModal">
+    <div class="modal">
+      <h3>Import from GitHub</h3>
+      <p>Enter the GitHub repository URL for the addon:</p>
+      <input type="text" id="githubUrl" placeholder="https://github.com/username/addon-name">
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="githubModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="githubModalImport">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal">
+      <h3>Export Addon</h3>
+      <p>Select an addon to export:</p>
+      <select id="exportAddonSelect">
+        <option value="">Loading addons...</option>
+      </select>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="exportModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="exportModalExport">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Addon Modal -->
+  <div class="modal-overlay" id="createAddonModal">
+    <div class="modal" style="width: 450px;">
+      <h3>Create New Addon</h3>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Addon Name (lowercase, no spaces)</label>
+        <input type="text" id="newAddonName" placeholder="my-addon" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Display Name</label>
+        <input type="text" id="newAddonDisplayName" placeholder="My Custom Addon" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Mode Command (what you say to activate)</label>
+        <input type="text" id="newAddonModeCommand" placeholder="my mode" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Description</label>
+        <input type="text" id="newAddonDescription" placeholder="What does this addon do?" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 8px;">Options</label>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonCommandsOnly"> Commands only (no text typing)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonPushToTalk"> Push-to-talk (hold Cmd+Option)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonTTS"> Enable TTS by default
+          </label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="createAddonCancel">Cancel</button>
+        <button class="btn btn-primary" id="createAddonSubmit">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Addon Settings Modal -->
+  <div class="modal-overlay" id="addonSettingsModal">
+    <div class="modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+      <h3 id="addonSettingsTitle">Addon Settings</h3>
+      <div id="addonSettingsContent">
+        <!-- Dynamic content -->
+      </div>
+      <div class="modal-buttons" style="margin-top: 16px; display: flex; justify-content: space-between;">
+        <button class="btn btn-danger" id="addonSettingsRemove" style="margin-right: auto;">Hide Addon</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" id="addonSettingsCancel">Cancel</button>
+          <button class="btn btn-primary" id="addonSettingsSave">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const { ipcRenderer } = require('electron');
@@ -707,14 +1115,6 @@
       // API Key (masked)
       if (config.deepgramApiKey) {
         document.getElementById('deepgramKey').value = config.deepgramApiKey;
-      }
-
-      // Hotkey
-      if (config.hotkey) {
-        const mods = config.hotkey.modifiers || [];
-        const key = config.hotkey.key || ';';
-        const hotkeyStr = mods.map(m => m === 'cmd' ? '⌘' : m === 'shift' ? '⇧' : m === 'alt' ? '⌥' : m === 'ctrl' ? '⌃' : m).join(' ') + ' ' + key;
-        document.getElementById('hotkeyToggle').textContent = hotkeyStr;
       }
 
       // Piper settings
@@ -761,6 +1161,15 @@
       setTimeout(loadState, 1500);
     });
 
+    // Listening controls
+    document.getElementById('startListeningBtn').addEventListener('click', () => {
+      ipcRenderer.send('start-listening');
+    });
+
+    document.getElementById('stopListeningBtn').addEventListener('click', () => {
+      ipcRenderer.send('stop-listening');
+    });
+
     // Mode selection
     document.querySelectorAll('.mode-option').forEach(opt => {
       opt.addEventListener('click', () => {
@@ -772,7 +1181,33 @@
 
     // TTS toggle
     document.getElementById('ttsToggle').addEventListener('change', (e) => {
+      console.log('Sending set-tts:', e.target.checked);
       ipcRenderer.send('set-tts', e.target.checked);
+    });
+
+    // Advanced mode toggle
+    const advancedToggle = document.getElementById('advancedToggle');
+
+    // Load saved advanced mode preference
+    const savedAdvanced = localStorage.getItem('advancedMode') === 'true';
+    advancedToggle.checked = savedAdvanced;
+    if (savedAdvanced) {
+      document.body.classList.add('advanced-mode');
+    }
+
+    advancedToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.body.classList.add('advanced-mode');
+        localStorage.setItem('advancedMode', 'true');
+      } else {
+        document.body.classList.remove('advanced-mode');
+        localStorage.setItem('advancedMode', 'false');
+        // Switch to General tab if currently on an advanced tab
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.classList.contains('advanced-tab')) {
+          document.querySelector('.tab[data-tab="general"]').click();
+        }
+      }
     });
 
     // API Key
@@ -816,7 +1251,7 @@
     // Docs link
     document.getElementById('docsLink').addEventListener('click', (e) => {
       e.preventDefault();
-      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type');
+      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type/tree/gui-implementation');
     });
 
     // Author link
@@ -825,25 +1260,581 @@
       ipcRenderer.send('open-external', 'https://github.com/jessesep');
     });
 
-    // Hotkey recorder
-    let isRecording = false;
-    const recordBtn = document.getElementById('recordHotkey');
+    // Addon docs link
+    document.getElementById('addonDocsLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type/blob/gui-implementation/docs/creating-addons.md');
+    });
 
-    recordBtn.addEventListener('click', () => {
-      if (isRecording) return;
+    // Load and display addons
+    async function loadAddons() {
+      const addons = await ipcRenderer.invoke('get-addons');
+      const container = document.getElementById('addonsList');
 
-      isRecording = true;
-      recordBtn.textContent = 'Press your hotkey...';
-      recordBtn.classList.add('recording');
+      if (!addons || addons.length === 0) {
+        container.innerHTML = `
+          <div class="setting-row" style="justify-content: center; color: #737373;">
+            No addons installed. Create one in the addons/ folder.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = addons.map(addon => `
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">
+              ${addon.displayName || addon.name}
+              ${addon.docsPath ? `<a href="#" class="addon-docs-link" data-docs="${addon.docsPath}" style="margin-left: 8px; font-size: 11px; color: #22c55e;">Docs</a>` : ''}
+            </div>
+            <div class="setting-description">
+              ${addon.description || 'No description'}
+              ${addon.modeCommand ? `<br><span style="color: #22c55e;">"computer ${addon.modeCommand}"</span>` : ''}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-secondary addon-settings-btn" data-addon="${addon.name}" style="padding: 6px 10px; font-size: 12px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+            <label class="toggle">
+              <input type="checkbox" data-addon="${addon.name}" ${addon.enabled ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      `).join('');
+
+      // Add event listeners to toggles
+      container.querySelectorAll('input[type="checkbox"]').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const addonName = e.target.dataset.addon;
+          const enabled = e.target.checked;
+          await ipcRenderer.invoke('toggle-addon', { name: addonName, enabled });
+          showToast(`${addonName} ${enabled ? 'enabled' : 'disabled'}. Restart service to apply.`);
+        });
+      });
+
+      // Add event listeners to docs links
+      container.querySelectorAll('.addon-docs-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const docsPath = e.target.dataset.docs;
+          ipcRenderer.send('open-addon-docs', docsPath);
+        });
+      });
+
+      // Add event listeners to settings buttons
+      container.querySelectorAll('.addon-settings-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const addonName = e.currentTarget.dataset.addon;
+          openAddonSettings(addonName);
+        });
+      });
+
+      // Update export modal select
+      const exportSelect = document.getElementById('exportAddonSelect');
+      exportSelect.innerHTML = addons.map(addon =>
+        `<option value="${addon.name}">${addon.displayName || addon.name}</option>`
+      ).join('');
+    }
+
+    // GitHub Import Modal
+    const githubModal = document.getElementById('githubModal');
+    const githubUrl = document.getElementById('githubUrl');
+
+    document.getElementById('importGithubBtn').addEventListener('click', () => {
+      githubUrl.value = '';
+      githubModal.classList.add('show');
+      githubUrl.focus();
+    });
+
+    document.getElementById('githubModalCancel').addEventListener('click', () => {
+      githubModal.classList.remove('show');
+    });
+
+    document.getElementById('githubModalImport').addEventListener('click', async () => {
+      const url = githubUrl.value.trim();
+      if (!url) {
+        showToast('Please enter a GitHub URL');
+        return;
+      }
+
+      showToast('Importing addon...');
+      githubModal.classList.remove('show');
+
+      const result = await ipcRenderer.invoke('import-addon-github', url);
+      if (result.success) {
+        showToast(`Imported: ${result.name}. Restart service to use.`);
+        loadAddons();
+      } else {
+        showToast(`Import failed: ${result.error}`);
+      }
+    });
+
+    // Close modal on overlay click
+    githubModal.addEventListener('click', (e) => {
+      if (e.target === githubModal) githubModal.classList.remove('show');
+    });
+
+    // Import from local folder
+    document.getElementById('importLocalBtn').addEventListener('click', async () => {
+      const result = await ipcRenderer.invoke('import-addon-local');
+      if (result.success) {
+        showToast(`Imported: ${result.name}. Restart service to use.`);
+        loadAddons();
+      } else if (result.error) {
+        showToast(`Import failed: ${result.error}`);
+      }
+    });
+
+    // Export Modal
+    const exportModal = document.getElementById('exportModal');
+
+    document.getElementById('exportAddonBtn').addEventListener('click', () => {
+      exportModal.classList.add('show');
+    });
+
+    document.getElementById('exportModalCancel').addEventListener('click', () => {
+      exportModal.classList.remove('show');
+    });
+
+    document.getElementById('exportModalExport').addEventListener('click', async () => {
+      const addonName = document.getElementById('exportAddonSelect').value;
+      if (!addonName) {
+        showToast('Please select an addon');
+        return;
+      }
+
+      exportModal.classList.remove('show');
+      const result = await ipcRenderer.invoke('export-addon', addonName);
+      if (result.success) {
+        showToast(`Exported to: ${result.path}`);
+      } else {
+        showToast(`Export failed: ${result.error}`);
+      }
+    });
+
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) exportModal.classList.remove('show');
+    });
+
+    // Create Addon Modal
+    const createAddonModal = document.getElementById('createAddonModal');
+
+    document.getElementById('createAddonBtn').addEventListener('click', () => {
+      // Reset form
+      document.getElementById('newAddonName').value = '';
+      document.getElementById('newAddonDisplayName').value = '';
+      document.getElementById('newAddonModeCommand').value = '';
+      document.getElementById('newAddonDescription').value = '';
+      document.getElementById('newAddonCommandsOnly').checked = false;
+      document.getElementById('newAddonPushToTalk').checked = false;
+      document.getElementById('newAddonTTS').checked = false;
+      createAddonModal.classList.add('show');
+      document.getElementById('newAddonName').focus();
+    });
+
+    document.getElementById('createAddonCancel').addEventListener('click', () => {
+      createAddonModal.classList.remove('show');
+    });
+
+    document.getElementById('createAddonSubmit').addEventListener('click', async () => {
+      const name = document.getElementById('newAddonName').value.trim().toLowerCase().replace(/\s+/g, '-');
+      const displayName = document.getElementById('newAddonDisplayName').value.trim();
+      const modeCommand = document.getElementById('newAddonModeCommand').value.trim();
+      const description = document.getElementById('newAddonDescription').value.trim();
+      const commandsOnly = document.getElementById('newAddonCommandsOnly').checked;
+      const pushToTalk = document.getElementById('newAddonPushToTalk').checked;
+      const ttsEnabled = document.getElementById('newAddonTTS').checked;
+
+      if (!name) {
+        showToast('Please enter an addon name');
+        return;
+      }
+      if (!modeCommand) {
+        showToast('Please enter a mode command');
+        return;
+      }
+
+      createAddonModal.classList.remove('show');
+      const result = await ipcRenderer.invoke('create-addon', {
+        name, displayName, modeCommand, description, commandsOnly, pushToTalk, ttsEnabled
+      });
+
+      if (result.success) {
+        showToast(`Created addon: ${name}`);
+        loadAddons();
+      } else {
+        showToast(`Failed: ${result.error}`);
+      }
+    });
+
+    createAddonModal.addEventListener('click', (e) => {
+      if (e.target === createAddonModal) createAddonModal.classList.remove('show');
+    });
+
+    // Addon Settings Modal
+    const addonSettingsModal = document.getElementById('addonSettingsModal');
+    let currentEditingAddon = null;
+
+    // Available actions for custom commands dropdown
+    const availableActions = [
+      { value: 'play', label: 'Play' },
+      { value: 'stop', label: 'Stop' },
+      { value: 'continue', label: 'Continue' },
+      { value: 'record', label: 'Record' },
+      { value: 'overdub', label: 'Overdub' },
+      { value: 'tap_tempo', label: 'Tap Tempo' },
+      { value: 'undo', label: 'Undo' },
+      { value: 'redo', label: 'Redo' },
+      { value: 'metronome_on', label: 'Metronome On' },
+      { value: 'metronome_off', label: 'Metronome Off' },
+      { value: 'metronome_toggle', label: 'Metronome Toggle' },
+      { value: 'loop_on', label: 'Loop On' },
+      { value: 'loop_off', label: 'Loop Off' },
+      { value: 'loop_toggle', label: 'Loop Toggle' },
+      { value: 'stop_all', label: 'Stop All Clips' },
+      { value: 'next_cue', label: 'Next Cue' },
+      { value: 'prev_cue', label: 'Previous Cue' },
+      { value: 'create_audio', label: 'Create Audio Track' },
+      { value: 'create_midi', label: 'Create MIDI Track' },
+      { value: 'create_return', label: 'Create Return Track' },
+      { value: 'create_scene', label: 'Create Scene' },
+      { value: 'capture_midi', label: 'Capture MIDI' },
+      { value: 'find', label: 'Find/Search' },
+    ];
+
+    function getActionOptions(selectedValue = '') {
+      return availableActions.map(a =>
+        `<option value="${a.value}" ${a.value === selectedValue ? 'selected' : ''}>${a.label}</option>`
+      ).join('');
+    }
+
+    async function openAddonSettings(addonName) {
+      currentEditingAddon = addonName;
+      const settings = await ipcRenderer.invoke('get-addon-settings', addonName);
+      const addons = await ipcRenderer.invoke('get-addons');
+      const addon = addons.find(a => a.name === addonName);
+
+      document.getElementById('addonSettingsTitle').textContent = `${addon?.displayName || addonName} Settings`;
+
+      const content = document.getElementById('addonSettingsContent');
+      content.innerHTML = `
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 13px; color: #a3a3a3; margin-bottom: 8px;">Behavior</h4>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Commands Only</div>
+                <div class="setting-description">Don't type text, only execute commands</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsCommandsOnly" ${settings.commandsOnly ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Toggle Hotkey to Speak</div>
+                <div class="setting-description">Use hotkey toggle instead of always listening</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsPushToTalk" ${settings.pushToTalk ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">TTS Enabled</div>
+                <div class="setting-description">Enable text-to-speech when entering this mode</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsTTS" ${settings.ttsEnabled ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 13px; color: #a3a3a3; margin-bottom: 8px;">Custom Commands</h4>
+          <div class="setting-group" style="overflow: hidden;">
+            <div id="customCommandsList">
+              ${Object.entries(settings.customCommands || {}).map(([phrase, action], i) => `
+                <div class="custom-command-wrapper">
+                  <div class="custom-command-delete-bg">Delete</div>
+                  <div class="setting-row custom-command-row" data-index="${i}">
+                    <input type="text" class="cmd-phrase" value="${phrase}" placeholder="voice phrase" style="flex: 1; margin-right: 8px;">
+                    <select class="cmd-action" style="flex: 1;">
+                      ${getActionOptions(action)}
+                    </select>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="setting-row" style="justify-content: space-between; gap: 8px;">
+              <button class="btn btn-secondary" id="resetAddonSettings" style="padding: 6px 12px; font-size: 12px;">
+                Reset to Default
+              </button>
+              <button class="btn btn-secondary" id="addCustomCommand" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Command
+              </button>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: #737373; margin-top: 8px;">
+            Swipe left on a command to delete it
+          </div>
+        </div>
+      `;
+
+      // Add event listener for adding commands
+      document.getElementById('addCustomCommand').addEventListener('click', () => {
+        const list = document.getElementById('customCommandsList');
+        const index = list.children.length;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-command-wrapper';
+        wrapper.innerHTML = `
+          <div class="custom-command-delete-bg">Delete</div>
+          <div class="setting-row custom-command-row" data-index="${index}">
+            <input type="text" class="cmd-phrase" value="" placeholder="voice phrase" style="flex: 1; margin-right: 8px;">
+            <select class="cmd-action" style="flex: 1;">
+              ${getActionOptions()}
+            </select>
+          </div>
+        `;
+        list.appendChild(wrapper);
+        attachSwipeHandler(wrapper);
+        wrapper.querySelector('.cmd-phrase').focus();
+      });
+
+      // Reset addon settings
+      document.getElementById('resetAddonSettings').addEventListener('click', async () => {
+        if (confirm('Reset all settings for this addon to defaults?')) {
+          await ipcRenderer.invoke('save-addon-settings', {
+            name: currentEditingAddon,
+            settings: { commandsOnly: null, pushToTalk: null, ttsEnabled: null, customCommands: {} }
+          });
+          showToast('Settings reset to defaults');
+          addonSettingsModal.classList.remove('show');
+          currentEditingAddon = null;
+        }
+      });
+
+      // Swipe to delete handlers
+      function attachSwipeHandler(wrapper) {
+        const row = wrapper.querySelector('.custom-command-row');
+        const deleteBtn = wrapper.querySelector('.custom-command-delete-bg');
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+
+        // Click on delete button
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => {
+            wrapper.remove();
+          });
+        }
+
+        row.addEventListener('mousedown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+          startX = e.clientX;
+          isDragging = true;
+          row.classList.add('swiping');
+        });
+
+        row.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          currentX = e.clientX - startX;
+          if (currentX < 0) {
+            row.style.transform = `translateX(${Math.max(currentX, -80)}px)`;
+          }
+        });
+
+        row.addEventListener('mouseup', () => {
+          if (!isDragging) return;
+          isDragging = false;
+          row.classList.remove('swiping');
+          if (currentX < -50) {
+            wrapper.remove();
+          } else {
+            row.style.transform = '';
+          }
+          currentX = 0;
+        });
+
+        row.addEventListener('mouseleave', () => {
+          if (isDragging) {
+            isDragging = false;
+            row.classList.remove('swiping');
+            if (currentX < -50) {
+              wrapper.remove();
+            } else {
+              row.style.transform = '';
+            }
+            currentX = 0;
+          }
+        });
+
+        // Touch events for trackpad
+        row.addEventListener('wheel', (e) => {
+          if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && e.deltaX > 30) {
+            wrapper.remove();
+          }
+        }, { passive: true });
+      }
+
+      // Attach swipe handlers to existing rows
+      content.querySelectorAll('.custom-command-wrapper').forEach(attachSwipeHandler);
+
+      addonSettingsModal.classList.add('show');
+    }
+
+    document.getElementById('addonSettingsCancel').addEventListener('click', () => {
+      addonSettingsModal.classList.remove('show');
+      currentEditingAddon = null;
+    });
+
+    document.getElementById('addonSettingsRemove').addEventListener('click', async () => {
+      if (!currentEditingAddon) return;
+
+      if (confirm(`Hide "${currentEditingAddon}" addon from the GUI? The addon files will be kept and can be restored by editing ~/.config/speech2type/addons.json`)) {
+        const result = await ipcRenderer.invoke('remove-addon', currentEditingAddon);
+        addonSettingsModal.classList.remove('show');
+        currentEditingAddon = null;
+
+        if (result.success) {
+          showToast('Addon hidden from GUI');
+          loadAddons();
+        } else {
+          showToast(`Failed to hide: ${result.error}`);
+        }
+      }
+    });
+
+    document.getElementById('addonSettingsSave').addEventListener('click', async () => {
+      if (!currentEditingAddon) return;
+
+      const commandsOnly = document.getElementById('settingsCommandsOnly').checked;
+      const pushToTalk = document.getElementById('settingsPushToTalk').checked;
+      const ttsEnabled = document.getElementById('settingsTTS').checked;
+
+      // Gather custom commands
+      const customCommands = {};
+      document.querySelectorAll('.custom-command-row').forEach(row => {
+        const phrase = row.querySelector('.cmd-phrase').value.trim();
+        const action = row.querySelector('.cmd-action').value.trim();
+        if (phrase && action) {
+          customCommands[phrase] = action;
+        }
+      });
+
+      const result = await ipcRenderer.invoke('save-addon-settings', {
+        name: currentEditingAddon,
+        settings: { commandsOnly, pushToTalk, ttsEnabled, customCommands }
+      });
+
+      addonSettingsModal.classList.remove('show');
+      currentEditingAddon = null;
+
+      if (result.success) {
+        showToast('Settings saved. Changes apply immediately.');
+      } else {
+        showToast(`Failed: ${result.error}`);
+      }
+    });
+
+    addonSettingsModal.addEventListener('click', (e) => {
+      if (e.target === addonSettingsModal) {
+        addonSettingsModal.classList.remove('show');
+        currentEditingAddon = null;
+      }
+    });
+
+    // Hotkey management
+    let currentHotkeys = {};
+    let recordingHotkeyName = null;
+
+    const hotkeyLabels = {
+      toggle: { label: 'Toggle Listening', description: 'Start/stop voice recognition' },
+      toggleTTS: { label: 'Toggle TTS', description: 'Turn text-to-speech on/off' },
+      pushToTalk: { label: 'Push-to-Talk', description: 'Hold to speak, release to submit (modifiers only)' },
+      stopTTS: { label: 'Stop TTS', description: 'Stop current speech playback' },
+    };
+
+    function formatHotkeyDisplay(hotkey) {
+      if (!hotkey || (!hotkey.key && (!hotkey.modifiers || hotkey.modifiers.length === 0))) {
+        return 'Not set';
+      }
+      const mods = hotkey.modifiers || [];
+      let key = hotkey.key || '';
+
+      const modStr = mods.map(m => {
+        if (m === 'cmd') return 'Cmd';
+        if (m === 'alt') return 'Option';
+        if (m === 'ctrl') return 'Ctrl';
+        if (m === 'shift') return 'Shift';
+        return m;
+      }).join('+');
+
+      // Convert keycode to display name
+      let keyDisplay = key;
+      if (key === '39') keyDisplay = "'";
+      else if (key === '49') keyDisplay = 'Space';
+      else if (key === '41') keyDisplay = ';';
+
+      if (!keyDisplay && modStr) return modStr + ' (hold)';
+      return modStr ? `${modStr}+${keyDisplay}` : keyDisplay;
+    }
+
+    async function loadHotkeys() {
+      currentHotkeys = await ipcRenderer.invoke('get-hotkeys');
+      const container = document.getElementById('hotkeysList');
+
+      container.innerHTML = Object.entries(hotkeyLabels).map(([name, info]) => {
+        const hotkey = currentHotkeys[name] || {};
+        return `
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">${info.label}</div>
+              <div class="setting-description">${info.description}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="hotkey" id="hotkey-display-${name}">${formatHotkeyDisplay(hotkey)}</span>
+              <button class="btn btn-secondary hotkey-record-btn" data-hotkey="${name}" style="padding: 6px 12px; font-size: 12px;">
+                Record
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add event listeners to record buttons
+      container.querySelectorAll('.hotkey-record-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          startRecordingHotkey(e.target.dataset.hotkey, e.target);
+        });
+      });
+    }
+
+    function startRecordingHotkey(hotkeyName, button) {
+      if (recordingHotkeyName) return;
+
+      recordingHotkeyName = hotkeyName;
+      button.textContent = 'Press keys...';
+      button.classList.add('recording');
 
       const handleKeydown = async (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // Need at least one modifier
-        if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-          return;
-        }
+        // For pushToTalk, we only need modifiers
+        const isPushToTalk = hotkeyName === 'pushToTalk';
 
         // Build hotkey object
         const modifiers = [];
@@ -852,27 +1843,45 @@
         if (e.altKey) modifiers.push('alt');
         if (e.shiftKey) modifiers.push('shift');
 
-        // Get the key (ignore modifier-only presses)
+        // Get the key
         let key = e.key.toLowerCase();
-        if (['meta', 'control', 'alt', 'shift'].includes(key)) {
-          return;
+        const isModifierOnly = ['meta', 'control', 'alt', 'shift'].includes(key);
+
+        if (isPushToTalk) {
+          // For push-to-talk, we want modifiers only
+          if (modifiers.length === 0) return;
+          if (!isModifierOnly) {
+            key = null; // Push-to-talk uses modifiers only
+          } else {
+            return; // Keep waiting for more modifiers or a non-modifier key
+          }
+        } else {
+          // For regular hotkeys, allow single keys OR modifier+key combos
+          // Just ignore modifier-only presses
+          if (isModifierOnly) return;
         }
 
-        // Save the hotkey
-        const config = await ipcRenderer.invoke('get-config');
-        config.hotkey = { modifiers, key };
-        await ipcRenderer.invoke('save-config', config);
+        // Get display key name
+        let displayKey = e.key;
+        if (displayKey === ' ') displayKey = 'Space';
+
+        // Update hotkey config
+        currentHotkeys[hotkeyName] = {
+          ...currentHotkeys[hotkeyName],
+          modifiers,
+          key: isPushToTalk ? null : displayKey
+        };
+
+        await ipcRenderer.invoke('save-hotkeys', currentHotkeys);
 
         // Update display
-        const hotkeyStr = modifiers.map(m =>
-          m === 'cmd' ? '⌘' : m === 'shift' ? '⇧' : m === 'alt' ? '⌥' : m === 'ctrl' ? '⌃' : m
-        ).join(' ') + ' ' + key;
-        document.getElementById('hotkeyToggle').textContent = hotkeyStr;
+        const display = document.getElementById(`hotkey-display-${hotkeyName}`);
+        display.textContent = formatHotkeyDisplay(currentHotkeys[hotkeyName]);
 
         // Reset button
-        isRecording = false;
-        recordBtn.textContent = 'Record New Hotkey';
-        recordBtn.classList.remove('recording');
+        recordingHotkeyName = null;
+        button.textContent = 'Record';
+        button.classList.remove('recording');
         document.removeEventListener('keydown', handleKeydown, true);
 
         showToast('Hotkey saved! Restart service to apply.');
@@ -882,13 +1891,20 @@
 
       // Cancel after 5 seconds
       setTimeout(() => {
-        if (isRecording) {
-          isRecording = false;
-          recordBtn.textContent = 'Record New Hotkey';
-          recordBtn.classList.remove('recording');
+        if (recordingHotkeyName === hotkeyName) {
+          recordingHotkeyName = null;
+          button.textContent = 'Record';
+          button.classList.remove('recording');
           document.removeEventListener('keydown', handleKeydown, true);
         }
       }, 5000);
+    }
+
+    // Reset hotkeys to defaults
+    document.getElementById('resetHotkeysBtn').addEventListener('click', async () => {
+      await ipcRenderer.invoke('reset-hotkeys');
+      await loadHotkeys();
+      showToast('Hotkeys reset to defaults. Restart service to apply.');
     });
 
     // Listen for state updates from main process
@@ -902,8 +1918,175 @@
       document.getElementById('ttsToggle').checked = enabled;
     });
 
+    // Command sections data
+    const builtInCommands = {
+      'Core Commands': {
+        editable: false,
+        commands: [
+          { phrase: 'affirmative', action: 'Press Enter / Submit' },
+          { phrase: 'retract', action: 'Undo last typed text' },
+          { phrase: 'new line', action: 'Insert line break' },
+          { phrase: 'escape', action: 'Press Escape key' },
+        ]
+      },
+      'System Commands': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'scratch', action: 'Clear all typed text' },
+          { phrase: 'speech on', action: 'Enable TTS' },
+          { phrase: 'speech off', action: 'Disable TTS' },
+          { phrase: 'stop', action: 'Stop TTS playback' },
+          { phrase: 'power mode', action: 'Switch to Claude mode' },
+          { phrase: 'music mode', action: 'Switch to Ableton mode' },
+          { phrase: 'general mode', action: 'Switch to General mode' },
+        ]
+      },
+      'Clipboard & Editing': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'copy', action: 'Copy (⌘C)' },
+          { phrase: 'paste', action: 'Paste (⌘V)' },
+          { phrase: 'cut', action: 'Cut (⌘X)' },
+          { phrase: 'select all', action: 'Select All (⌘A)' },
+          { phrase: 'save', action: 'Save (⌘S)' },
+          { phrase: 'undo', action: 'Undo (⌘Z)' },
+          { phrase: 'redo', action: 'Redo (⌘⇧Z)' },
+          { phrase: 'find', action: 'Find (⌘F)' },
+        ]
+      },
+      'Navigation': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'tab', action: 'Next field (Tab)' },
+          { phrase: 'back tab', action: 'Previous field (⇧Tab)' },
+          { phrase: 'up/down/left/right', action: 'Arrow keys' },
+          { phrase: 'page up/down', action: 'Scroll page' },
+          { phrase: 'home/end', action: 'Go to start/end' },
+        ]
+      },
+      'Window Management': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'close', action: 'Close window (⌘W)' },
+          { phrase: 'quit', action: 'Quit app (⌘Q)' },
+          { phrase: 'minimize', action: 'Minimize (⌘M)' },
+          { phrase: 'hide', action: 'Hide app (⌘H)' },
+          { phrase: 'switch', action: 'Switch app (⌘Tab)' },
+        ]
+      },
+    };
+
+    async function loadCommands() {
+      const container = document.getElementById('commandsContainer');
+      const addons = await ipcRenderer.invoke('get-addons');
+
+      let html = '';
+      let sectionIndex = 0;
+
+      // Built-in command sections - Core and System expanded, others collapsed
+      for (const [sectionName, section] of Object.entries(builtInCommands)) {
+        const collapsed = sectionName !== 'Core Commands' && sectionName !== 'System Commands';
+        html += renderCommandSection(sectionName, section, null, collapsed);
+        sectionIndex++;
+      }
+
+      // Addon command sections (all collapsed by default)
+      for (const addon of addons) {
+        if (!addon.enabled) continue;
+
+        // Fetch addon commands from backend
+        const addonCommands = await ipcRenderer.invoke('get-addon-commands', addon.name);
+        const builtIn = addonCommands.builtIn || {};
+        const custom = addonCommands.custom || {};
+        const allCommands = { ...builtIn, ...custom };
+
+        if (Object.keys(allCommands).length > 0) {
+          const commands = Object.entries(allCommands).map(([phrase, action]) => ({
+            phrase,
+            action: typeof action === 'string' ? action : action.description || action,
+            isCustom: custom.hasOwnProperty(phrase)
+          }));
+
+          const section = {
+            editable: true,
+            addonName: addon.name,
+            prefix: 'computer',
+            commands
+          };
+          html += renderCommandSection(`${addon.displayName || addon.name}`, section, addon.name, true);
+        }
+      }
+
+      container.innerHTML = html;
+
+      // Attach collapse handlers
+      container.querySelectorAll('.command-section-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          // Don't collapse if clicking on a button
+          if (e.target.closest('button')) return;
+          const section = header.closest('.command-section');
+          section.classList.toggle('collapsed');
+        });
+      });
+
+      // Attach edit button handlers
+      container.querySelectorAll('.edit-section-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const addonName = btn.dataset.addon;
+          if (addonName) {
+            openAddonSettings(addonName);
+          }
+        });
+      });
+    }
+
+    function renderCommandSection(name, section, addonName, collapsed = false) {
+      const commandCount = section.commands.length;
+      const prefix = section.prefix ? `"${section.prefix} ` : '"';
+      const suffix = section.prefix ? '"' : '"';
+      const collapsedClass = collapsed ? ' collapsed' : '';
+
+      const editButton = section.editable && addonName ?
+        `<button class="btn btn-secondary edit-section-btn" data-addon="${addonName}" style="padding: 4px 10px; font-size: 11px;">Edit</button>` : '';
+
+      const commandsHtml = section.commands.map(cmd => `
+        <div class="command-item${cmd.isCustom ? ' custom-command' : ''}">
+          <span class="command-phrase">${prefix}${cmd.phrase}${suffix}${cmd.isCustom ? ' <span style="color: #22c55e; font-size: 10px;">★</span>' : ''}</span>
+          <span class="command-action">${cmd.action}</span>
+        </div>
+      `).join('');
+
+      return `
+        <div class="command-section${collapsedClass}">
+          <div class="command-section-header">
+            <div class="command-section-title">
+              <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <span>${name}</span>
+              <span class="command-count">${commandCount}</span>
+            </div>
+            <div class="command-section-actions">
+              ${editButton}
+            </div>
+          </div>
+          <div class="command-section-content">
+            ${commandsHtml}
+          </div>
+        </div>
+      `;
+    }
+
     // Initial load
     loadState();
+    loadAddons();
+    loadHotkeys();
+    loadCommands();
   </script>
 </body>
 </html>

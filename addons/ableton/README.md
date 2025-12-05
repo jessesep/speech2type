@@ -36,9 +36,13 @@ speech2type/
 
 Say **"computer music mode"** or **"computer ableton mode"** to activate.
 
+### Commands Only Mode
+
+In music mode, **text is not typed** - only voice commands are executed. This prevents accidental typing while producing.
+
 ### Push-to-Talk
 
-In music mode, listening is **OFF by default** to avoid interfering with your workflow:
+Listening is **OFF by default** to avoid interfering with your workflow:
 
 - **Hold Cmd+Option** → Start listening
 - **Release Cmd+Option** → Auto-submit and stop listening

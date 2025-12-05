@@ -29,6 +29,7 @@ export const metadata = {
   ],
   pushToTalk: true,  // Enable push-to-talk behavior (Cmd+Option)
   pushToTalkAutoSubmit: true,  // Auto-submit on release
+  commandsOnly: true,  // Don't type transcribed text, only execute commands
 };
 
 // OSC Configuration
@@ -38,6 +39,24 @@ const OSC_PORT = 11000;
 // OSC Client
 let client = null;
 let connected = false;
+
+// Search mode state
+let searchModeActive = false;
+
+/**
+ * Check if search mode is active
+ */
+export function isSearchMode() {
+  return searchModeActive;
+}
+
+/**
+ * Set search mode state
+ */
+export function setSearchMode(active) {
+  searchModeActive = active;
+  console.log(chalk.magenta(`[ableton] Search mode: ${active ? 'ON' : 'OFF'}`));
+}
 
 /**
  * Initialize the addon
@@ -67,6 +86,8 @@ export function cleanup() {
     connected = false;
     console.log(chalk.dim('[ableton] Disconnected'));
   }
+  // Reset search mode when leaving addon
+  searchModeActive = false;
 }
 
 /**
@@ -188,6 +209,13 @@ export const commands = {
   // Common shortcuts (also available in this mode)
   'find': 'find',
   'search': 'find',
+
+  // Exit search mode / stop listening (affirmative without "computer" prefix handled in main)
+  'done': 'exit_search',
+  'cancel': 'exit_search',
+  'exit': 'exit_search',
+  'exit search': 'exit_search',
+  'stop search': 'exit_search',
 };
 
 // ============================================================================
@@ -417,9 +445,15 @@ export function execute(action, value) {
       send('/live/song/capture_midi');
       return true;
 
-    // Find (keyboard shortcut)
+    // Find/Search - enters search mode with transcription enabled
     case 'find':
-      return 'find';  // Return string to delegate to main app
+      searchModeActive = true;
+      return { action: 'search_mode', searchMode: true };
+
+    // Exit search mode (affirmative also stops listening)
+    case 'exit_search':
+      searchModeActive = false;
+      return { action: 'exit_search_mode', stopListening: true };
 
     default:
       return false;

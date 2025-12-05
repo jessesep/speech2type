@@ -7,10 +7,13 @@
 
 console.log('Starting Speech2Type GUI...');
 
-const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain, globalShortcut, shell } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain, globalShortcut, shell, dialog } = require('electron');
 const path = require('path');
 const { spawn, exec, execSync } = require('child_process');
 const fs = require('fs');
+const https = require('https');
+const { createWriteStream, mkdirSync, cpSync, rmSync } = require('fs');
+const { pipeline } = require('stream/promises');
 
 console.log('Modules loaded');
 
@@ -41,11 +44,48 @@ const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
 const TTS_SPEAKING_FILE = '/tmp/claude-tts-speaking';
 const S2T_STATUS_FILE = '/tmp/s2t-status.json';
 const S2T_COMMAND_FILE = '/tmp/s2t-command';
-const projectRoot = path.join(__dirname, '..');
+
+// Handle both development and packaged app paths
+const isPackaged = app.isPackaged;
+const projectRoot = isPackaged
+  ? path.join(process.resourcesPath)
+  : path.join(__dirname, '..');
 
 // Config file path (same as speech2type uses)
 const CONFIG_DIR = path.join(require('os').homedir(), '.config', 'speech2type');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const ADDON_CONFIG_FILE = path.join(CONFIG_DIR, 'addons.json');
+const HOTKEY_CONFIG_FILE = path.join(CONFIG_DIR, 'hotkeys.json');
+
+// Default hotkey configuration
+const DEFAULT_HOTKEYS = {
+  toggle: { modifiers: ['cmd'], key: ';', description: 'Toggle listening' },
+  toggleTTS: { modifiers: ['ctrl'], key: "'", description: "Toggle TTS" },
+  pushToTalk: { modifiers: ['cmd', 'alt'], key: null, description: 'Push-to-talk (hold)' },
+  stopTTS: { modifiers: [], key: '49', description: 'Stop TTS' },  // keycode 49 = space
+};
+
+// Mode launch config file
+const MODE_LAUNCH_CONFIG_FILE = path.join(CONFIG_DIR, 'mode-launch.json');
+
+// Default mode launch configuration
+const DEFAULT_MODE_LAUNCH = {
+  general: {
+    enabled: false,
+    processName: '',
+    launchCommand: ''
+  },
+  music: {
+    enabled: true,
+    processName: 'Ableton Live',
+    launchCommand: 'open -a "Ableton Live 12 Suite"'
+  },
+  claude: {
+    enabled: true,
+    processName: 'claude',
+    launchCommand: 'osascript -e \'tell application "Terminal" to do script "claude --resume --dangerously-skip-permissions"\''
+  }
+};
 
 // Icon cache
 const icons = {};
@@ -285,6 +325,74 @@ function updateTrayIcon() {
 }
 
 /**
+ * Load mode launch configuration
+ */
+function loadModeLaunchConfig() {
+  try {
+    if (fs.existsSync(MODE_LAUNCH_CONFIG_FILE)) {
+      const data = fs.readFileSync(MODE_LAUNCH_CONFIG_FILE, 'utf8');
+      return { ...DEFAULT_MODE_LAUNCH, ...JSON.parse(data) };
+    }
+  } catch (e) {
+    console.error('Failed to load mode launch config:', e.message);
+  }
+  return { ...DEFAULT_MODE_LAUNCH };
+}
+
+/**
+ * Save mode launch configuration
+ */
+function saveModeLaunchConfig(config) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.writeFileSync(MODE_LAUNCH_CONFIG_FILE, JSON.stringify(config, null, 2));
+  } catch (e) {
+    console.error('Failed to save mode launch config:', e.message);
+  }
+}
+
+/**
+ * Check if a process is running by name
+ */
+function isProcessRunning(processName) {
+  if (!processName) return true; // No process to check
+  try {
+    const result = execSync(`pgrep -f "${processName}" 2>/dev/null || true`, { encoding: 'utf8' });
+    return result.trim().length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Launch app for mode if not already running
+ */
+function launchAppForMode(mode) {
+  const config = loadModeLaunchConfig();
+  const modeConfig = config[mode];
+
+  if (!modeConfig || !modeConfig.enabled || !modeConfig.launchCommand) {
+    return;
+  }
+
+  // Check if process is already running
+  if (modeConfig.processName && isProcessRunning(modeConfig.processName)) {
+    console.log(`[mode-launch] ${modeConfig.processName} already running`);
+    return;
+  }
+
+  // Launch the app
+  console.log(`[mode-launch] Launching: ${modeConfig.launchCommand}`);
+  exec(modeConfig.launchCommand, (err) => {
+    if (err) {
+      console.error(`[mode-launch] Failed to launch: ${err.message}`);
+    }
+  });
+}
+
+/**
  * Check current TTS state from file
  */
 function checkTTSState() {
@@ -321,6 +429,505 @@ function saveConfig(config) {
   } catch (e) {
     console.error('Failed to save config:', e);
     return false;
+  }
+}
+
+/**
+ * Load addon config (enabled/disabled states)
+ */
+function loadAddonConfig() {
+  try {
+    if (fs.existsSync(ADDON_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(ADDON_CONFIG_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Failed to load addon config:', e);
+  }
+  return { enabled: {} };
+}
+
+/**
+ * Save addon config
+ */
+function saveAddonConfig(config) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.writeFileSync(ADDON_CONFIG_FILE, JSON.stringify(config, null, 2));
+    return true;
+  } catch (e) {
+    console.error('Failed to save addon config:', e);
+    return false;
+  }
+}
+
+/**
+ * Load hotkey configuration
+ */
+function loadHotkeyConfig() {
+  try {
+    if (fs.existsSync(HOTKEY_CONFIG_FILE)) {
+      const data = fs.readFileSync(HOTKEY_CONFIG_FILE, 'utf8');
+      return { ...DEFAULT_HOTKEYS, ...JSON.parse(data) };
+    }
+  } catch (e) {
+    console.error('Failed to load hotkey config:', e);
+  }
+  return { ...DEFAULT_HOTKEYS };
+}
+
+/**
+ * Save hotkey configuration
+ */
+function saveHotkeyConfig(hotkeys) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.writeFileSync(HOTKEY_CONFIG_FILE, JSON.stringify(hotkeys, null, 2));
+    return { success: true };
+  } catch (e) {
+    console.error('Failed to save hotkey config:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Format hotkey for display
+ */
+function formatHotkey(hotkey) {
+  if (!hotkey || !hotkey.key) return 'Not set';
+  const mods = hotkey.modifiers || [];
+  const key = hotkey.key || '';
+  const modStr = mods.map(m => {
+    if (m === 'cmd') return 'Cmd';
+    if (m === 'alt') return 'Option';
+    if (m === 'ctrl') return 'Ctrl';
+    if (m === 'shift') return 'Shift';
+    return m;
+  }).join('+');
+
+  // Convert keycode to display name
+  let keyDisplay = key;
+  if (key === '39') keyDisplay = "'";
+  else if (key === '49') keyDisplay = 'Space';
+  else if (key === '41') keyDisplay = ';';
+
+  return modStr ? `${modStr}+${keyDisplay}` : keyDisplay;
+}
+
+/**
+ * Get list of all addons with their enabled state
+ */
+function getAddonsList() {
+  const addonsDir = path.join(projectRoot, 'addons');
+  const addonConfig = loadAddonConfig();
+  const addons = [];
+
+  try {
+    if (!fs.existsSync(addonsDir)) {
+      return addons;
+    }
+
+    const entries = fs.readdirSync(addonsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const name = entry.name;
+
+        // Skip hidden addons (removed from GUI but not deleted)
+        if (addonConfig.hidden && addonConfig.hidden[name]) {
+          continue;
+        }
+
+        const indexPath = path.join(addonsDir, entry.name, 'index.js');
+        if (fs.existsSync(indexPath)) {
+          // Read the file to extract metadata (simple regex approach for GUI)
+          const content = fs.readFileSync(indexPath, 'utf8');
+
+          // Extract metadata using regex (works for simple cases)
+          const nameMatch = content.match(/name:\s*['"]([^'"]+)['"]/);
+          const displayNameMatch = content.match(/displayName:\s*['"]([^'"]+)['"]/);
+          const descriptionMatch = content.match(/description:\s*['"]([^'"]+)['"]/);
+          const modeCommandMatch = content.match(/modeCommand:\s*['"]([^'"]+)['"]/);
+          const versionMatch = content.match(/version:\s*['"]([^'"]+)['"]/);
+
+          const enabled = addonConfig.enabled[name] !== false; // Default to enabled
+
+          // Check for documentation file (README.md or docs.md)
+          const addonDir = path.join(addonsDir, entry.name);
+          let docsPath = null;
+          if (fs.existsSync(path.join(addonDir, 'README.md'))) {
+            docsPath = path.join(addonDir, 'README.md');
+          } else if (fs.existsSync(path.join(addonDir, 'docs.md'))) {
+            docsPath = path.join(addonDir, 'docs.md');
+          }
+
+          addons.push({
+            name,
+            displayName: displayNameMatch ? displayNameMatch[1] : name,
+            description: descriptionMatch ? descriptionMatch[1] : null,
+            modeCommand: modeCommandMatch ? modeCommandMatch[1] : null,
+            version: versionMatch ? versionMatch[1] : '1.0.0',
+            enabled,
+            docsPath
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to list addons:', e);
+  }
+
+  return addons;
+}
+
+/**
+ * Toggle an addon's enabled state
+ */
+function toggleAddon(name, enabled) {
+  const config = loadAddonConfig();
+  config.enabled[name] = enabled;
+  return saveAddonConfig(config);
+}
+
+/**
+ * Import addon from GitHub URL
+ * Supports: https://github.com/user/repo or https://github.com/user/repo/tree/branch/path
+ */
+async function importAddonFromGithub(url) {
+  try {
+    // Parse GitHub URL
+    const match = url.match(/github\.com\/([^/]+)\/([^/]+)(?:\/tree\/([^/]+)(?:\/(.+))?)?/);
+    if (!match) {
+      return { success: false, error: 'Invalid GitHub URL' };
+    }
+
+    const [, owner, repo, branch = 'main', subpath = ''] = match;
+    const repoName = repo.replace(/\.git$/, '');
+
+    // Download as zip
+    const zipUrl = `https://github.com/${owner}/${repoName}/archive/refs/heads/${branch}.zip`;
+    const tempDir = path.join(require('os').tmpdir(), `s2t-addon-${Date.now()}`);
+    const zipPath = path.join(tempDir, 'addon.zip');
+
+    mkdirSync(tempDir, { recursive: true });
+
+    // Download zip file
+    await new Promise((resolve, reject) => {
+      const download = (downloadUrl) => {
+        https.get(downloadUrl, (response) => {
+          if (response.statusCode === 302 || response.statusCode === 301) {
+            download(response.headers.location);
+            return;
+          }
+          if (response.statusCode !== 200) {
+            reject(new Error(`HTTP ${response.statusCode}`));
+            return;
+          }
+          const file = createWriteStream(zipPath);
+          response.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            resolve();
+          });
+        }).on('error', reject);
+      };
+      download(zipUrl);
+    });
+
+    // Extract zip using unzip command (available on macOS)
+    execSync(`unzip -q "${zipPath}" -d "${tempDir}"`);
+
+    // Find the extracted folder
+    const extractedDir = path.join(tempDir, `${repoName}-${branch}`);
+    const sourceDir = subpath ? path.join(extractedDir, subpath) : extractedDir;
+
+    // Verify it's a valid addon (has index.js)
+    if (!fs.existsSync(path.join(sourceDir, 'index.js'))) {
+      rmSync(tempDir, { recursive: true, force: true });
+      return { success: false, error: 'No index.js found in addon' };
+    }
+
+    // Determine addon name from metadata or folder
+    let addonName = repoName;
+    try {
+      const indexContent = fs.readFileSync(path.join(sourceDir, 'index.js'), 'utf8');
+      const nameMatch = indexContent.match(/name:\s*['"]([^'"]+)['"]/);
+      if (nameMatch) addonName = nameMatch[1];
+    } catch (e) {}
+
+    // Copy to addons directory
+    const addonsDir = path.join(projectRoot, 'addons');
+    const destDir = path.join(addonsDir, addonName);
+
+    if (fs.existsSync(destDir)) {
+      rmSync(destDir, { recursive: true, force: true });
+    }
+
+    cpSync(sourceDir, destDir, { recursive: true });
+
+    // Cleanup temp
+    rmSync(tempDir, { recursive: true, force: true });
+
+    return { success: true, name: addonName };
+  } catch (error) {
+    console.error('GitHub import error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Import addon from local folder or zip
+ */
+async function importAddonFromLocal() {
+  const result = await dialog.showOpenDialog({
+    title: 'Import Addon',
+    properties: ['openFile', 'openDirectory'],
+    filters: [
+      { name: 'Addon', extensions: ['zip'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (result.canceled || !result.filePaths.length) {
+    return { success: false };
+  }
+
+  const sourcePath = result.filePaths[0];
+  const isZip = sourcePath.endsWith('.zip');
+  const tempDir = path.join(require('os').tmpdir(), `s2t-addon-${Date.now()}`);
+
+  try {
+    let sourceDir = sourcePath;
+
+    if (isZip) {
+      // Extract zip
+      mkdirSync(tempDir, { recursive: true });
+      execSync(`unzip -q "${sourcePath}" -d "${tempDir}"`);
+
+      // Find extracted content (might be in a subfolder)
+      const entries = fs.readdirSync(tempDir);
+      if (entries.length === 1 && fs.statSync(path.join(tempDir, entries[0])).isDirectory()) {
+        sourceDir = path.join(tempDir, entries[0]);
+      } else {
+        sourceDir = tempDir;
+      }
+    }
+
+    // Verify it's a valid addon
+    if (!fs.existsSync(path.join(sourceDir, 'index.js'))) {
+      if (isZip) rmSync(tempDir, { recursive: true, force: true });
+      return { success: false, error: 'No index.js found in addon' };
+    }
+
+    // Get addon name
+    let addonName = path.basename(sourceDir);
+    try {
+      const indexContent = fs.readFileSync(path.join(sourceDir, 'index.js'), 'utf8');
+      const nameMatch = indexContent.match(/name:\s*['"]([^'"]+)['"]/);
+      if (nameMatch) addonName = nameMatch[1];
+    } catch (e) {}
+
+    // Copy to addons directory
+    const addonsDir = path.join(projectRoot, 'addons');
+    const destDir = path.join(addonsDir, addonName);
+
+    if (fs.existsSync(destDir)) {
+      rmSync(destDir, { recursive: true, force: true });
+    }
+
+    cpSync(sourceDir, destDir, { recursive: true });
+
+    // Cleanup temp if zip
+    if (isZip) rmSync(tempDir, { recursive: true, force: true });
+
+    return { success: true, name: addonName };
+  } catch (error) {
+    console.error('Local import error:', error);
+    if (isZip) rmSync(tempDir, { recursive: true, force: true });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get addon settings from config
+ */
+function getAddonSettings(addonName) {
+  const config = loadAddonConfig();
+  const settings = config.settings?.[addonName] || {};
+
+  // Also read defaults from the addon's index.js
+  const addonsDir = path.join(projectRoot, 'addons');
+  const indexPath = path.join(addonsDir, addonName, 'index.js');
+
+  let defaults = {
+    commandsOnly: false,
+    pushToTalk: false,
+    ttsEnabled: false,
+    customCommands: {}
+  };
+
+  try {
+    if (fs.existsSync(indexPath)) {
+      const content = fs.readFileSync(indexPath, 'utf8');
+      if (content.includes('commandsOnly: true')) defaults.commandsOnly = true;
+      if (content.includes('pushToTalk: true')) defaults.pushToTalk = true;
+      if (content.includes('ttsEnabled: true')) defaults.ttsEnabled = true;
+    }
+  } catch (e) {}
+
+  return { ...defaults, ...settings };
+}
+
+/**
+ * Save addon settings to config
+ */
+function saveAddonSettings(addonName, settings) {
+  try {
+    const config = loadAddonConfig();
+    if (!config.settings) config.settings = {};
+    config.settings[addonName] = settings;
+    saveAddonConfig(config);
+
+    // Notify backend to reload (write to command file)
+    fs.writeFileSync('/tmp/s2t-gui-command', 'reload-addons');
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Create a new addon from template
+ */
+function createAddon({ name, displayName, modeCommand, description, commandsOnly, pushToTalk, ttsEnabled }) {
+  try {
+    const addonsDir = path.join(projectRoot, 'addons');
+    const addonDir = path.join(addonsDir, name);
+
+    if (fs.existsSync(addonDir)) {
+      return { success: false, error: 'Addon already exists' };
+    }
+
+    fs.mkdirSync(addonDir, { recursive: true });
+
+    const template = `/**
+ * ${displayName || name} Addon
+ * ${description || 'Custom addon for Speech2Type'}
+ */
+
+export const metadata = {
+  name: '${name}',
+  displayName: '${displayName || name}',
+  version: '1.0.0',
+  description: '${description || ''}',
+  modeCommand: '${modeCommand}',
+  modeAliases: ['${modeCommand}'],
+  pushToTalk: ${pushToTalk},
+  pushToTalkAutoSubmit: ${pushToTalk},
+  commandsOnly: ${commandsOnly},
+  ttsEnabled: ${ttsEnabled},
+};
+
+// Called when addon is activated
+export function init() {
+  console.log('[${name}] Initialized');
+}
+
+// Called when switching away from this mode
+export function cleanup() {
+  console.log('[${name}] Cleaned up');
+}
+
+// Voice commands (phrases are prefixed with "computer" automatically)
+export const commands = {
+  // Add your commands here:
+  // 'do something': 'my_action',
+};
+
+// Pattern-based commands (for dynamic values like numbers)
+export const patterns = [
+  // Example: "computer set value 50" -> captures 50
+  // {
+  //   pattern: /set value (\\d+)/i,
+  //   action: 'set_value',
+  //   extract: (match) => parseInt(match[1])
+  // },
+];
+
+// Handle command execution
+export async function execute(action, value) {
+  switch (action) {
+    // case 'my_action':
+    //   console.log('Doing my action!');
+    //   return true;
+    default:
+      return false;
+  }
+}
+`;
+
+    fs.writeFileSync(path.join(addonDir, 'index.js'), template);
+
+    // Create a basic README
+    const readme = `# ${displayName || name}
+
+${description || 'Custom addon for Speech2Type Enhanced.'}
+
+## Activation
+
+Say **"computer ${modeCommand}"** to activate this mode.
+
+## Commands
+
+Add your custom commands in \`index.js\`.
+
+## Options
+
+- Commands Only: ${commandsOnly ? 'Yes' : 'No'}
+- Push-to-Talk: ${pushToTalk ? 'Yes' : 'No'}
+- TTS Enabled: ${ttsEnabled ? 'Yes' : 'No'}
+`;
+
+    fs.writeFileSync(path.join(addonDir, 'README.md'), readme);
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Export addon as zip
+ */
+async function exportAddon(addonName) {
+  const addonsDir = path.join(projectRoot, 'addons');
+  const addonDir = path.join(addonsDir, addonName);
+
+  if (!fs.existsSync(addonDir)) {
+    return { success: false, error: 'Addon not found' };
+  }
+
+  const result = await dialog.showSaveDialog({
+    title: 'Export Addon',
+    defaultPath: `${addonName}.zip`,
+    filters: [{ name: 'Zip Archive', extensions: ['zip'] }]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return { success: false };
+  }
+
+  try {
+    // Create zip using ditto (macOS) for better compatibility
+    execSync(`cd "${addonsDir}" && zip -r "${result.filePath}" "${addonName}"`);
+    return { success: true, path: result.filePath };
+  } catch (error) {
+    console.error('Export error:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -374,7 +981,9 @@ function buildContextMenu() {
       enabled: isServiceRunning
     },
     {
-      label: ttsEnabled ? '🔊 TTS Enabled' : '🔇 TTS Disabled',
+      label: ttsEnabled ? 'TTS Enabled' : 'TTS Disabled',
+      type: 'checkbox',
+      checked: ttsEnabled,
       click: toggleTTS
     },
     { type: 'separator' },
@@ -450,23 +1059,32 @@ function setMode(mode) {
  * Toggle TTS enabled state
  */
 function toggleTTS() {
-  if (ttsEnabled) {
+  // Check actual file state first
+  const currentlyEnabled = fs.existsSync(TTS_CONTROL_FILE);
+
+  if (currentlyEnabled) {
     try {
       fs.unlinkSync(TTS_CONTROL_FILE);
     } catch (e) {}
     ttsEnabled = false;
+    console.log('TTS: disabled (GUI)');
   } else {
     fs.writeFileSync(TTS_CONTROL_FILE, '');
     ttsEnabled = true;
+    console.log('TTS: enabled (GUI)');
   }
+
+  // Also notify the backend via command file so it updates its state
+  try {
+    fs.writeFileSync('/tmp/s2t-gui-command', 'sync-tts');
+  } catch (e) {}
+
   tray.setContextMenu(buildContextMenu());
 
   // Notify settings window if open
   if (settingsWindow) {
     settingsWindow.webContents.send('tts-changed', ttsEnabled);
   }
-
-  console.log(`TTS: ${ttsEnabled ? 'enabled' : 'disabled'}`);
 }
 
 /**
@@ -555,10 +1173,10 @@ function openSettings() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 500,
-    height: 650,
+    width: 520,
+    height: 820,
     title: 'Speech2Type Settings',
-    resizable: true,
+    resizable: false,
     minimizable: false,
     maximizable: false,
     webPreferences: {
@@ -584,6 +1202,7 @@ function startStateWatcher() {
   setInterval(() => {
     const prevSpeaking = isSpeaking;
     const prevListening = isListening;
+    const prevTTS = ttsEnabled;
 
     checkTTSState();
 
@@ -597,15 +1216,21 @@ function startStateWatcher() {
         } else {
           currentMode = status.mode;
         }
-        ttsEnabled = status.tts;
+        // Sync TTS from actual file, not status.json (more reliable)
+        ttsEnabled = fs.existsSync(TTS_CONTROL_FILE);
       }
     } catch (e) {
       // Ignore read errors
     }
 
-    if (prevSpeaking !== isSpeaking || prevListening !== isListening) {
+    if (prevSpeaking !== isSpeaking || prevListening !== isListening || prevTTS !== ttsEnabled) {
       updateTrayIcon();
       tray.setContextMenu(buildContextMenu());
+
+      // Notify settings window of TTS change
+      if (prevTTS !== ttsEnabled && settingsWindow) {
+        settingsWindow.webContents.send('tts-changed', ttsEnabled);
+      }
     }
   }, 300);
 }
@@ -620,13 +1245,113 @@ ipcMain.handle('get-state', () => ({
   ttsEnabled,
   isSpeaking
 }));
+ipcMain.handle('get-addons', () => getAddonsList());
+ipcMain.handle('get-addon-commands', (event, addonName) => {
+  try {
+    const addonPath = path.join(projectRoot, 'addons', addonName, 'index.js');
+    const builtInCommands = {};
+    const customCommands = {};
+
+    if (fs.existsSync(addonPath)) {
+      const content = fs.readFileSync(addonPath, 'utf8');
+
+      // Extract commands object using regex (handles multi-line)
+      const commandsMatch = content.match(/(?:const|let|var)\s+commands\s*=\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}/s);
+      if (commandsMatch) {
+        // Parse the commands - simple key: value extraction
+        const commandsStr = commandsMatch[1];
+
+        // Match patterns like 'phrase': 'action' or "phrase": "action"
+        const regex = /['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]/g;
+        let match;
+        while ((match = regex.exec(commandsStr)) !== null) {
+          builtInCommands[match[1]] = match[2];
+        }
+      }
+    }
+
+    // Get custom commands from settings
+    const addonConfig = loadAddonConfig();
+    const settings = addonConfig.settings?.[addonName] || {};
+    if (settings.customCommands) {
+      for (const [phrase, action] of Object.entries(settings.customCommands)) {
+        customCommands[phrase] = action;
+      }
+    }
+
+    return { builtIn: builtInCommands, custom: customCommands };
+  } catch (e) {
+    console.error(`Failed to get addon commands: ${e.message}`);
+    return { builtIn: {}, custom: {} };
+  }
+});
+ipcMain.handle('toggle-addon', (event, { name, enabled }) => toggleAddon(name, enabled));
+ipcMain.handle('import-addon-github', (event, url) => importAddonFromGithub(url));
+ipcMain.handle('import-addon-local', () => importAddonFromLocal());
+ipcMain.handle('export-addon', (event, addonName) => exportAddon(addonName));
+ipcMain.handle('get-addon-settings', (event, addonName) => getAddonSettings(addonName));
+ipcMain.handle('save-addon-settings', (event, { name, settings }) => saveAddonSettings(name, settings));
+ipcMain.handle('remove-addon', (event, name) => {
+  try {
+    // Instead of deleting, mark the addon as hidden in the config
+    const config = loadAddonConfig();
+    if (!config.hidden) config.hidden = {};
+    config.hidden[name] = true;
+    config.enabled[name] = false; // Also disable it
+    saveAddonConfig(config);
+    console.log(`[addons] Hidden addon: ${name}`);
+    return { success: true };
+  } catch (e) {
+    console.error(`[addons] Failed to hide addon: ${e.message}`);
+    return { success: false, error: e.message };
+  }
+});
+ipcMain.handle('create-addon', (event, options) => createAddon(options));
+ipcMain.handle('get-hotkeys', () => loadHotkeyConfig());
+ipcMain.handle('save-hotkeys', (event, hotkeys) => saveHotkeyConfig(hotkeys));
+ipcMain.handle('reset-hotkeys', () => {
+  // Delete the config file to reset to defaults
+  try {
+    if (fs.existsSync(HOTKEY_CONFIG_FILE)) {
+      fs.unlinkSync(HOTKEY_CONFIG_FILE);
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+ipcMain.handle('format-hotkey', (event, hotkey) => formatHotkey(hotkey));
+ipcMain.on('open-addon-docs', (event, docsPath) => {
+  // Open the markdown file with the default app (or show in Finder)
+  shell.openPath(docsPath);
+});
 ipcMain.on('set-mode', (event, mode) => setMode(mode));
 ipcMain.on('set-tts', (event, enabled) => {
-  if (enabled !== ttsEnabled) toggleTTS();
+  console.log('Received set-tts:', enabled, 'current:', ttsEnabled);
+  toggleTTS();
 });
 ipcMain.on('start-service', () => startS2T());
 ipcMain.on('stop-service', () => stopS2T());
 ipcMain.on('restart-service', () => restartS2T());
+
+// Listening controls (toggle voice recognition without stopping service)
+ipcMain.on('start-listening', () => {
+  try {
+    fs.writeFileSync('/tmp/s2t-gui-command', 'start');
+    console.log('Sent start listening command');
+  } catch (e) {
+    console.error('Failed to send start command:', e);
+  }
+});
+
+ipcMain.on('stop-listening', () => {
+  try {
+    fs.writeFileSync('/tmp/s2t-gui-command', 'stop');
+    console.log('Sent stop listening command');
+  } catch (e) {
+    console.error('Failed to send stop command:', e);
+  }
+});
 ipcMain.on('open-external', (event, url) => shell.openExternal(url));
 
 // App lifecycle

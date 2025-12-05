@@ -4,6 +4,16 @@ Addons extend Speech2Type with custom voice commands for specific applications. 
 
 ## Quick Start
 
+### Option 1: Using the GUI (Recommended)
+
+1. Open Settings (click the menu bar icon -> Settings)
+2. Go to the "Addons" tab
+3. Click "New Addon"
+4. Fill in the form and click "Create"
+5. Your addon is ready! Edit `addons/your-addon/index.js` to add commands
+
+### Option 2: Manual Creation
+
 1. Create a folder in `addons/` with your addon name (e.g., `addons/my-addon/`)
 2. Create an `index.js` file with your addon code
 3. Restart Speech2Type - your addon will be automatically loaded
@@ -81,6 +91,22 @@ export async function handleCommand(action, context) {
 | `modeAliases` | No | Array of alternative activation phrases |
 | `pushToTalk` | No | If true, use Cmd+Option hold-to-speak |
 | `pushToTalkAutoSubmit` | No | If true, auto-press Enter on release |
+| `commandsOnly` | No | If true, don't type text - only execute commands |
+| `ttsEnabled` | No | If true, enable TTS when entering this mode |
+
+## GUI Settings Override
+
+Users can override addon settings from the GUI without modifying code:
+
+1. Open Settings -> Addons tab
+2. Click the gear icon next to any addon
+3. Configure:
+   - **Commands Only**: Don't type text, only execute commands
+   - **Push-to-Talk**: Hold Cmd+Option to speak
+   - **TTS Enabled**: Enable text-to-speech for this mode
+   - **Custom Commands**: Add extra voice commands dynamically
+
+Settings are stored in `~/.config/speech2type/addons.json` and override the addon's defaults.
 
 ## Adding Speech Recognition Variations
 
@@ -94,6 +120,62 @@ modeAliases: [
   'my moat',     // "mode" heard as "moat"
 ],
 ```
+
+## Pattern-Based Commands (Dynamic Values)
+
+For commands that include variable values (like "tempo 120" or "mute track 3"), use the `patterns` export:
+
+```javascript
+// Patterns use regex to capture dynamic values
+export const patterns = [
+  // "tempo 120" - captures the number
+  {
+    pattern: /^tempo\s+(\d+)$/i,
+    action: 'set_tempo',
+    extract: (match) => parseInt(match[1])
+  },
+
+  // "mute track 5" - captures the track number
+  {
+    pattern: /^mute\s+track\s+(\d+)$/i,
+    action: 'mute_track',
+    extract: (match) => parseInt(match[1])
+  },
+
+  // "volume track 2 80" - captures both track and volume
+  {
+    pattern: /^volume\s+track\s+(\d+)\s+(\d+)$/i,
+    action: 'set_volume',
+    extract: (match) => ({ track: parseInt(match[1]), volume: parseInt(match[2]) })
+  },
+];
+
+// Handle dynamic values in execute()
+export async function execute(action, value) {
+  switch (action) {
+    case 'set_tempo':
+      console.log(`Setting tempo to ${value} BPM`);
+      return true;
+
+    case 'mute_track':
+      console.log(`Muting track ${value}`);
+      return true;
+
+    case 'set_volume':
+      console.log(`Setting track ${value.track} volume to ${value.volume}%`);
+      return true;
+
+    default:
+      return false;
+  }
+}
+```
+
+**Tips for patterns:**
+- Add multiple patterns for the same action (e.g., "tempo 120", "set tempo 120", "bpm 120")
+- Use `\s+` for whitespace matching (handles multiple spaces)
+- Use `(\d+)` to capture numbers
+- The `extract` function receives the regex match array
 
 ## Example: Controlling an Application via OSC
 
@@ -204,6 +286,30 @@ With push-to-talk:
 - Hold **Cmd+Option** to start speaking
 - Release to stop and auto-submit (if enabled)
 
+## Enabling/Disabling Addons
+
+You can enable or disable addons without removing them:
+
+### Via GUI
+1. Open Settings (click the menu bar icon → Settings)
+2. Go to the "Addons" tab
+3. Toggle addons on/off using the switches
+4. Restart the service to apply changes
+
+### Via Config File
+Edit `~/.config/speech2type/addons.json`:
+
+```json
+{
+  "enabled": {
+    "my-addon": false,
+    "another-addon": true
+  }
+}
+```
+
+Addons default to enabled if not specified in the config.
+
 ## Testing Your Addon
 
 1. Place your addon in `addons/your-addon/`
@@ -230,6 +336,19 @@ export async function handleCommand(action) {
 }
 ```
 
+## Adding Documentation
+
+Create a `README.md` file in your addon folder to provide documentation:
+
+```
+addons/
+  my-addon/
+    index.js
+    README.md    <-- Your documentation here
+```
+
+The GUI will show a "Docs" link next to your addon name if `README.md` exists.
+
 ## Publishing Your Addon
 
 1. Create a GitHub repository for your addon
@@ -240,12 +359,35 @@ export async function handleCommand(action) {
    - Setup instructions
 3. Share it with the community!
 
+## Import/Export Addons
+
+### Importing from GitHub
+
+1. Open Settings -> Addons tab
+2. Click "Import" under "Import from GitHub"
+3. Paste the GitHub repository URL
+4. The addon will be downloaded and installed automatically
+
+### Importing from Local Folder/Zip
+
+1. Open Settings -> Addons tab
+2. Click "Browse" under "Import from Folder"
+3. Select a folder or .zip file containing an addon
+
+### Exporting an Addon
+
+1. Open Settings -> Addons tab
+2. Click "Export"
+3. Select which addon to export
+4. Choose where to save the .zip file
+
+## Hot Reload
+
+Changes to addon settings (via the GUI gear icon) take effect immediately without restarting the service. The backend watches for config changes and reloads automatically.
+
 ## Need Help?
 
-- Check the [Ableton addon](../addons/ableton/) for a complete example
+- Check the [Ableton addon](../addons/ableton/) for a complete, well-documented example
+- See [Ableton Voice Commands](./ableton-voice-commands.md) for the full command list
 - Open an issue on [GitHub](https://github.com/jessesep/speech2type)
 - Read the full [addon API documentation](./addon-developer-guide.md)
-
----
-
-Made with love by [@jessesep](https://github.com/jessesep)
