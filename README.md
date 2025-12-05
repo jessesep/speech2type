@@ -45,8 +45,11 @@ s2t start
 |-----|--------|
 | **Cmd+;** | Start/stop voice typing |
 | **Cmd+'** | Toggle Claude auto-speak |
+| **Spacebar** | Stop TTS while speaking |
 
 See [Voice Commands](#voice-commands-1) and [Claude Code Integration](#claude-code-integration) for full details.
+
+> **🎵 Ableton Live Voice Control**: For music production with Ableton Live, check out the [ableton-live-support branch](https://github.com/jessesep/speech2type/tree/ableton-live-support) which adds push-to-talk and extensive Ableton voice commands.
 
 ### Perfect for:
 - **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)
@@ -89,17 +92,28 @@ That's it! You now have voice typing in every Mac app.
 
 This fork includes voice commands for hands-free control. All commands work with punctuation (e.g., "Affirmative." works the same as "affirmative").
 
+### Command Prefix
+
+Most voice commands require the **"computer"** prefix to avoid conflicts with normal speech. The exceptions are "affirmative" and "retract" which work without the prefix for faster workflow.
+
+The app automatically normalizes "computers" to "computer" (common speech recognition error).
+
 ### Submit / Enter
 
 | Say | Action |
 |-----|--------|
 | **"affirmative"** | Press Enter (submit text) |
+| **"computer affirmative"** | Press Enter (submit text) |
+| **"computer enter"** | Press Enter (submit text) |
+| **"computer submit"** | Press Enter (submit text) |
 
 ### Undo / Delete Last Chunk
 
 | Say | Action |
 |-----|--------|
 | **"retract"** | Delete the last transcribed text |
+| **"computer retract"** | Delete the last transcribed text |
+| **"computer undo"** | Delete the last transcribed text |
 
 *You can say "retract" multiple times to undo multiple chunks (up to 20).*
 
@@ -107,17 +121,45 @@ This fork includes voice commands for hands-free control. All commands work with
 
 | Say | Action |
 |-----|--------|
-| **"retract everything confirm"** | Select all and delete (clears the input field) |
+| **"computer scratch"** | Select all and delete (clears the input field) |
+| **"computer scratch all"** | Select all and delete (clears the input field) |
+| **"computer scratch that"** | Select all and delete (clears the input field) |
 
-*Requires "confirm" to prevent accidental clearing.*
-
-### Stop Text-to-Speech
+### Text-to-Speech Control
 
 | Say | Action |
 |-----|--------|
-| **"silence"** | Stop current TTS playback |
+| **"computer speech on"** | Enable text-to-speech |
+| **"computer speech off"** | Disable text-to-speech |
+| **"computer text to speech on"** | Enable text-to-speech |
+| **"computer text to speech off"** | Disable text-to-speech |
 
-*Use Cmd+' to toggle Claude auto-speak on/off.*
+*You can also press Cmd+' to toggle Claude auto-speak, or Spacebar to stop current TTS playback.*
+
+### Clipboard & Editing
+
+| Say | Action |
+|-----|--------|
+| **"computer copy"** | Copy selection (Cmd+C) |
+| **"computer paste"** | Paste (Cmd+V) |
+| **"computer cut"** | Cut selection (Cmd+X) |
+| **"computer select all"** | Select all (Cmd+A) |
+| **"computer save"** | Save (Cmd+S) |
+| **"computer find"** | Find (Cmd+F) |
+
+### Window Management
+
+| Say | Action |
+|-----|--------|
+| **"computer new tab"** | New tab (Cmd+T) |
+| **"computer close tab"** | Close tab (Cmd+W) |
+| **"computer new window"** | New window (Cmd+N) |
+
+### Listening Control
+
+| Say | Action |
+|-----|--------|
+| **"computer stop listening"** | Stop voice recognition |
 
 ### App Switching
 
