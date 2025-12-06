@@ -869,61 +869,18 @@
       </div>
     </div>
 
-    <h2>Sounds</h2>
+    <h2>Settings</h2>
     <div class="setting-group">
       <div class="setting-row">
         <div class="setting-info">
-          <div class="setting-label">Sound Effects</div>
-          <div class="setting-description">Enable audio feedback sounds</div>
+          <div class="setting-label">Sound Settings</div>
+          <div class="setting-description">Configure audio feedback sounds</div>
         </div>
-        <label class="toggle">
-          <input type="checkbox" id="soundsEnabled" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Start Listening Sound</div>
-          <div class="setting-description">Play sound when voice input starts</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="startSoundEnabled" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Stop Listening Sound</div>
-          <div class="setting-description">Play sound when voice input stops</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="stopSoundEnabled" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Typing Sounds</div>
-          <div class="setting-description">Play subtle taps when text is typed</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="typingSoundEnabled" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-label">Volume</div>
-          <div class="setting-description">Sound effect volume</div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <input type="range" id="soundVolume" min="0" max="100" value="25" style="width: 100px;">
-          <span id="volumeDisplay" style="font-size: 12px; color: #888;">25%</span>
-        </div>
+        <button class="btn btn-secondary" id="openSoundSettings">Configure</button>
       </div>
     </div>
 
-    <h2>Settings</h2>
+    <h2>Advanced</h2>
     <div class="setting-group">
       <div class="setting-row">
         <div class="setting-info">
@@ -1205,6 +1162,64 @@
     </div>
   </div>
 
+  <!-- Sound Settings Modal -->
+  <div class="modal-overlay" id="soundSettingsModal">
+    <div class="modal" style="width: 400px;">
+      <h3>Sound Settings</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Sound Effects</div>
+            <div class="setting-description">Enable audio feedback</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="soundsEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Start Sound</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="startSoundEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Stop Sound</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="stopSoundEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Typing Sounds</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="typingSoundEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">Volume</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="range" id="soundVolume" min="0" max="100" value="25" style="width: 100px;">
+            <span id="volumeDisplay" style="font-size: 12px; color: #888;">25%</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-buttons" style="margin-top: 16px;">
+        <button class="btn btn-secondary" id="soundSettingsClose">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const { ipcRenderer } = require('electron');
     const fs = require('fs');
@@ -1357,6 +1372,20 @@
       document.getElementById('volumeDisplay').textContent = e.target.value + '%';
     });
     document.getElementById('soundVolume').addEventListener('change', saveSoundSettings);
+
+    // Sound settings modal
+    const soundSettingsModal = document.getElementById('soundSettingsModal');
+    document.getElementById('openSoundSettings').addEventListener('click', () => {
+      soundSettingsModal.classList.add('show');
+    });
+    document.getElementById('soundSettingsClose').addEventListener('click', () => {
+      soundSettingsModal.classList.remove('show');
+    });
+    soundSettingsModal.addEventListener('click', (e) => {
+      if (e.target === soundSettingsModal) {
+        soundSettingsModal.classList.remove('show');
+      }
+    });
 
     // Advanced mode toggle
     const advancedToggle = document.getElementById('advancedToggle');
