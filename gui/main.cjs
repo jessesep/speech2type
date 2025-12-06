@@ -1174,7 +1174,7 @@ function openSettings() {
 
   settingsWindow = new BrowserWindow({
     width: 520,
-    height: 880,
+    height: 920,
     title: 'Speech2Type Settings',
     resizable: false,
     minimizable: false,
