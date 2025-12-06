@@ -533,9 +533,11 @@ function startSession(config) {
   console.log(chalk.bold.magenta('\n▶ Started listening...'));
   console.log(chalk.dim(`Press ${config.formatHotkey()} again to stop.`));
 
+  // Play start sound immediately
+  playStartSound();
+
   transcriberService.once('open', () => {
     console.debug('[speech2type] Speech recognition connection opened');
-    playStartSound();
   });
   transcriberService.once('close', () => {
     console.debug('[speech2type] Speech recognition connection closed');
