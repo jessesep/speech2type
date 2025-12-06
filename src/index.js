@@ -221,16 +221,32 @@ function normalizeCommand(text) {
   return text.replace(/^computers\s+/, 'computer ');
 }
 
+// Sound settings helper (uses currentConfig when available)
+function getSoundSettings() {
+  try {
+    if (currentConfig && currentConfig.data && currentConfig.data.sounds) {
+      return currentConfig.data.sounds;
+    }
+  } catch (e) {}
+  return { enabled: true, startSound: true, stopSound: true, typingSound: true, volume: 0.25 };
+}
+
 // Play a soft beep for audio feedback
 function playBeep() {
-  exec('afplay -v 0.3 /System/Library/Sounds/Pop.aiff &', () => {});
+  const sounds = getSoundSettings();
+  if (!sounds.enabled) return;
+  const vol = sounds.volume || 0.25;
+  exec(`afplay -v ${vol} /System/Library/Sounds/Pop.aiff &`, () => {});
 }
 
 // Play subtle typing sounds (always 2 taps)
 function playTypingSound() {
-  exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+  const sounds = getSoundSettings();
+  if (!sounds.enabled || !sounds.typingSound) return;
+  const vol = (sounds.volume || 0.25) * 0.5;
+  exec(`afplay -v ${vol} /System/Library/Sounds/Tink.aiff &`, () => {});
   setTimeout(() => {
-    exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+    exec(`afplay -v ${vol} /System/Library/Sounds/Tink.aiff &`, () => {});
   }, 70);
 }
 
@@ -352,13 +368,17 @@ function matchAppName(spokenName) {
 }
 
 function playStartSound() {
-  // Ascending tone - Pop sound at higher pitch
-  exec('afplay -v 0.25 -r 1.5 /System/Library/Sounds/Pop.aiff &', () => {});
+  const sounds = getSoundSettings();
+  if (!sounds.enabled || !sounds.startSound) return;
+  const vol = sounds.volume || 0.25;
+  exec(`afplay -v ${vol} -r 1.5 /System/Library/Sounds/Pop.aiff &`, () => {});
 }
 
 function playStopSound() {
-  // Descending tone - Morse sound at lower pitch, softer
-  exec('afplay -v 0.12 -r 0.7 /System/Library/Sounds/Morse.aiff &', () => {});
+  const sounds = getSoundSettings();
+  if (!sounds.enabled || !sounds.stopSound) return;
+  const vol = (sounds.volume || 0.25) * 0.5; // Stop sound is softer
+  exec(`afplay -v ${vol} -r 0.7 /System/Library/Sounds/Morse.aiff &`, () => {});
 }
 
 async function initializeServices(config) {
@@ -533,9 +553,11 @@ function startSession(config) {
   console.log(chalk.bold.magenta('\n▶ Started listening...'));
   console.log(chalk.dim(`Press ${config.formatHotkey()} again to stop.`));
 
+  // Play start sound immediately when session starts
+  playStartSound();
+
   transcriberService.once('open', () => {
     console.debug('[speech2type] Speech recognition connection opened');
-    playStartSound();
   });
   transcriberService.once('close', () => {
     console.debug('[speech2type] Speech recognition connection closed');

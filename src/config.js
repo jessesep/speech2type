@@ -9,6 +9,13 @@ import { LANGUAGES } from './data/languages.js';
 const DEFAULT_CONFIG = {
   hotkey: { modifiers: ['cmd'], key: ';' },
   speech: { language: 'en', deepgramApiKey: null },
+  sounds: {
+    enabled: true,
+    startSound: true,
+    stopSound: true,
+    typingSound: true,
+    volume: 0.25,
+  },
   setupDone: false,
 };
 
@@ -31,6 +38,16 @@ class Config {
           properties: {
             language: { type: 'string' },
             deepgramApiKey: { type: 'string', format: 'password', nullable: true },
+          },
+        },
+        sounds: {
+          type: 'object',
+          properties: {
+            enabled: { type: 'boolean' },
+            startSound: { type: 'boolean' },
+            stopSound: { type: 'boolean' },
+            typingSound: { type: 'boolean' },
+            volume: { type: 'number' },
           },
         },
       },

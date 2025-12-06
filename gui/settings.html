@@ -400,6 +400,29 @@
       color: #525252;
     }
 
+    /* Range slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      height: 4px;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #22c55e;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #16a34a;
+    }
+
     /* Select dropdown */
     select {
       background: rgba(0, 0, 0, 0.3);
@@ -846,6 +869,60 @@
       </div>
     </div>
 
+    <h2>Sounds</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Sound Effects</div>
+          <div class="setting-description">Enable audio feedback sounds</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="soundsEnabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Start Listening Sound</div>
+          <div class="setting-description">Play sound when voice input starts</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="startSoundEnabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Stop Listening Sound</div>
+          <div class="setting-description">Play sound when voice input stops</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="stopSoundEnabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Typing Sounds</div>
+          <div class="setting-description">Play subtle taps when text is typed</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="typingSoundEnabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Volume</div>
+          <div class="setting-description">Sound effect volume</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" id="soundVolume" min="0" max="100" value="25" style="width: 100px;">
+          <span id="volumeDisplay" style="font-size: 12px; color: #888;">25%</span>
+        </div>
+      </div>
+    </div>
+
     <h2>Settings</h2>
     <div class="setting-group">
       <div class="setting-row">
@@ -1173,6 +1250,16 @@
       if (config.voiceModel) {
         document.getElementById('voiceModel').value = config.voiceModel;
       }
+
+      // Sound settings
+      const sounds = config.sounds || { enabled: true, startSound: true, stopSound: true, typingSound: true, volume: 0.25 };
+      document.getElementById('soundsEnabled').checked = sounds.enabled !== false;
+      document.getElementById('startSoundEnabled').checked = sounds.startSound !== false;
+      document.getElementById('stopSoundEnabled').checked = sounds.stopSound !== false;
+      document.getElementById('typingSoundEnabled').checked = sounds.typingSound !== false;
+      const volumePercent = Math.round((sounds.volume || 0.25) * 100);
+      document.getElementById('soundVolume').value = volumePercent;
+      document.getElementById('volumeDisplay').textContent = volumePercent + '%';
     }
 
     function updateServiceStatus(running, listening) {
@@ -1247,6 +1334,29 @@
       console.log('Sending set-tts:', e.target.checked);
       ipcRenderer.send('set-tts', e.target.checked);
     });
+
+    // Sound settings
+    async function saveSoundSettings() {
+      const sounds = {
+        enabled: document.getElementById('soundsEnabled').checked,
+        startSound: document.getElementById('startSoundEnabled').checked,
+        stopSound: document.getElementById('stopSoundEnabled').checked,
+        typingSound: document.getElementById('typingSoundEnabled').checked,
+        volume: parseInt(document.getElementById('soundVolume').value) / 100
+      };
+      const config = await ipcRenderer.invoke('get-config');
+      config.sounds = sounds;
+      await ipcRenderer.invoke('save-config', config);
+    }
+
+    document.getElementById('soundsEnabled').addEventListener('change', saveSoundSettings);
+    document.getElementById('startSoundEnabled').addEventListener('change', saveSoundSettings);
+    document.getElementById('stopSoundEnabled').addEventListener('change', saveSoundSettings);
+    document.getElementById('typingSoundEnabled').addEventListener('change', saveSoundSettings);
+    document.getElementById('soundVolume').addEventListener('input', (e) => {
+      document.getElementById('volumeDisplay').textContent = e.target.value + '%';
+    });
+    document.getElementById('soundVolume').addEventListener('change', saveSoundSettings);
 
     // Advanced mode toggle
     const advancedToggle = document.getElementById('advancedToggle');
