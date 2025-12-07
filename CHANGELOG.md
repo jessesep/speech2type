@@ -2,6 +2,34 @@
 
 All notable changes to Speech2Type Enhanced will be documented in this file.
 
+## [0.5.0] - 2025-12-06
+
+### Added
+
+#### Audio Settings System
+- **Audio Settings Modal**: Full-featured audio configuration accessible from API tab
+  - Master toggle to enable/disable all sound effects
+  - Individual toggles for start sound, stop sound, and typing sounds
+  - Volume slider (0-100%) affecting all sounds
+  - Status indicator on Configure button (green = enabled, gray = disabled)
+  - Dynamic description showing which sounds are enabled and volume level
+- **Custom Sound Files**: Load your own audio files for any sound effect
+  - Supports .aiff, .mp3, .wav, .m4a, .ogg formats
+  - Browse button to select files from your computer
+  - Clear button to reset to system defaults
+  - Test button (▶) to preview sounds at current volume
+- **Console Logging**: Debug output for sound playback
+  - Logs when sounds play with file path and volume
+  - Logs when sounds are skipped (disabled)
+- **Documentation**: Added `docs/audio-settings.md` with complete guide
+
+### Changed
+- Moved audio configuration from inline settings to dedicated modal dialog
+- Sound functions now read from config file for custom sound paths
+- Custom sounds play at natural pitch (rate flags only apply to system defaults)
+
+---
+
 ## [0.4.0] - 2025-12-05
 
 ### Added

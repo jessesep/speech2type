@@ -979,6 +979,20 @@
         <input type="text" id="voiceModel" placeholder="~/.local/share/piper-voices/en_US-lessac-high.onnx" style="width: 100%;">
       </div>
     </div>
+
+    <h2>Audio</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Sound Effects</div>
+          <div class="setting-description" id="audioStatusDescription">Configure audio feedback for listening events</div>
+        </div>
+        <button class="btn btn-secondary" id="openAudioSettingsBtn">
+          <span id="audioStatusIndicator" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #22c55e;"></span>
+          Configure
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Hotkeys Tab -->
@@ -1124,6 +1138,243 @@
           <button class="btn btn-secondary" id="addonSettingsCancel">Cancel</button>
           <button class="btn btn-primary" id="addonSettingsSave">Save</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Settings Modal -->
+  <div class="modal-overlay" id="audioSettingsModal">
+    <div class="modal" style="width: 520px; max-height: 85vh; overflow-y: auto;">
+      <h3>Audio Settings</h3>
+      <p style="margin-bottom: 20px;">Configure sound effects for events and actions</p>
+
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Master Toggle & Volume -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: #fff;">Sound Effects Enabled</div>
+            <div style="font-size: 12px; color: #737373; margin-top: 2px;">Master toggle for all sounds</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="audioEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Volume Slider -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 13px; color: #e5e5e5;">Master Volume</div>
+            <div style="font-size: 13px; color: #a855f7; font-weight: 500;" id="audioVolumeValue">100%</div>
+          </div>
+          <input type="range" id="audioVolume" min="0" max="100" value="100" style="width: 100%; accent-color: #a855f7;">
+        </div>
+
+        <!-- Listening Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Listening Events</div>
+
+          <!-- Start Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Start Listening</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioStartSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="startSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Pop (Default)</option>
+                <option value="glass">Glass</option>
+                <option value="ping">Ping</option>
+                <option value="hero">Hero</option>
+                <option value="funk">Funk</option>
+                <option value="purr">Purr</option>
+                <option value="submarine">Submarine</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testStartSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customStartSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Stop Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Stop Listening</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioStopSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="stopSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Morse (Default)</option>
+                <option value="basso">Basso</option>
+                <option value="blow">Blow</option>
+                <option value="bottle">Bottle</option>
+                <option value="frog">Frog</option>
+                <option value="sosumi">Sosumi</option>
+                <option value="tink">Tink</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testStopSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customStopSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Typing Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Typing Feedback</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTypingSounds" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="typingSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Tink (Default)</option>
+                <option value="pop">Pop</option>
+                <option value="morse">Morse</option>
+                <option value="ping">Ping</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTypingSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTypingSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+
+        <!-- Command & Action Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Commands & Actions</div>
+
+          <!-- Command Recognized Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Command Recognized</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioCommandSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="commandSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Funk (Default)</option>
+                <option value="glass">Glass</option>
+                <option value="hero">Hero</option>
+                <option value="ping">Ping</option>
+                <option value="pop">Pop</option>
+                <option value="purr">Purr</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testCommandSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customCommandSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Error Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Error / Failed</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioErrorSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="errorSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Basso (Default)</option>
+                <option value="sosumi">Sosumi</option>
+                <option value="blow">Blow</option>
+                <option value="bottle">Bottle</option>
+                <option value="frog">Frog</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testErrorSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customErrorSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Mode Switch Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Mode Switch</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioModeSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="modeSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Glass (Default)</option>
+                <option value="hero">Hero</option>
+                <option value="ping">Ping</option>
+                <option value="submarine">Submarine</option>
+                <option value="purr">Purr</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testModeSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customModeSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+
+        <!-- TTS Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Text-to-Speech</div>
+
+          <!-- TTS Start Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">TTS Started</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTTSStartSound">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="ttsStartSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Purr (Default)</option>
+                <option value="pop">Pop</option>
+                <option value="ping">Ping</option>
+                <option value="submarine">Submarine</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTTSStartSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTTSStartSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- TTS Stop Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">TTS Stopped</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTTSStopSound">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="ttsStopSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Blow (Default)</option>
+                <option value="basso">Basso</option>
+                <option value="bottle">Bottle</option>
+                <option value="tink">Tink</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTTSStopSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTTSStopSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons" style="margin-top: 24px;">
+        <button class="btn btn-secondary" id="audioSettingsCancel">Cancel</button>
+        <button class="btn btn-primary" id="audioSettingsSave">Save</button>
       </div>
     </div>
   </div>
@@ -1309,6 +1560,221 @@
       const config = await ipcRenderer.invoke('get-config');
       config.voiceModel = voiceModel;
       await ipcRenderer.invoke('save-config', config);
+    });
+
+    // Audio settings modal
+    const audioSettingsModal = document.getElementById('audioSettingsModal');
+
+    // Sound preset to file path mapping
+    const SOUND_PRESETS = {
+      // System sounds
+      'default': null, // Will use hardcoded default per event
+      'pop': '/System/Library/Sounds/Pop.aiff',
+      'glass': '/System/Library/Sounds/Glass.aiff',
+      'ping': '/System/Library/Sounds/Ping.aiff',
+      'hero': '/System/Library/Sounds/Hero.aiff',
+      'funk': '/System/Library/Sounds/Funk.aiff',
+      'purr': '/System/Library/Sounds/Purr.aiff',
+      'submarine': '/System/Library/Sounds/Submarine.aiff',
+      'morse': '/System/Library/Sounds/Morse.aiff',
+      'basso': '/System/Library/Sounds/Basso.aiff',
+      'blow': '/System/Library/Sounds/Blow.aiff',
+      'bottle': '/System/Library/Sounds/Bottle.aiff',
+      'frog': '/System/Library/Sounds/Frog.aiff',
+      'sosumi': '/System/Library/Sounds/Sosumi.aiff',
+      'tink': '/System/Library/Sounds/Tink.aiff',
+      'custom': 'custom' // Special marker
+    };
+
+    // Default sounds for each event type
+    const DEFAULT_SOUNDS = {
+      start: '/System/Library/Sounds/Pop.aiff',
+      stop: '/System/Library/Sounds/Morse.aiff',
+      typing: '/System/Library/Sounds/Tink.aiff',
+      command: '/System/Library/Sounds/Funk.aiff',
+      error: '/System/Library/Sounds/Basso.aiff',
+      mode: '/System/Library/Sounds/Glass.aiff',
+      ttsStart: '/System/Library/Sounds/Purr.aiff',
+      ttsStop: '/System/Library/Sounds/Blow.aiff'
+    };
+
+    // All sound event configs
+    const SOUND_EVENTS = [
+      { id: 'start', toggle: 'audioStartSound', preset: 'startSoundPreset', custom: 'customStartSound' },
+      { id: 'stop', toggle: 'audioStopSound', preset: 'stopSoundPreset', custom: 'customStopSound' },
+      { id: 'typing', toggle: 'audioTypingSounds', preset: 'typingSoundPreset', custom: 'customTypingSound' },
+      { id: 'command', toggle: 'audioCommandSound', preset: 'commandSoundPreset', custom: 'customCommandSound' },
+      { id: 'error', toggle: 'audioErrorSound', preset: 'errorSoundPreset', custom: 'customErrorSound' },
+      { id: 'mode', toggle: 'audioModeSound', preset: 'modeSoundPreset', custom: 'customModeSound' },
+      { id: 'ttsStart', toggle: 'audioTTSStartSound', preset: 'ttsStartSoundPreset', custom: 'customTTSStartSound' },
+      { id: 'ttsStop', toggle: 'audioTTSStopSound', preset: 'ttsStopSoundPreset', custom: 'customTTSStopSound' }
+    ];
+
+    // Update audio status indicator
+    async function updateAudioStatusIndicator() {
+      const config = await ipcRenderer.invoke('get-config');
+      const audio = config.audio || {};
+      const indicator = document.getElementById('audioStatusIndicator');
+      const description = document.getElementById('audioStatusDescription');
+
+      if (audio.enabled === false) {
+        indicator.style.background = '#6b7280';
+        description.textContent = 'Sound effects disabled';
+      } else {
+        indicator.style.background = '#22c55e';
+        const count = SOUND_EVENTS.filter(e => audio[e.id + 'Sound'] !== false && audio[e.id + 'Enabled'] !== false).length;
+        description.textContent = `${count} sound events enabled (${audio.volume ?? 100}%)`;
+      }
+    }
+
+    updateAudioStatusIndicator();
+
+    // Helper to show just filename from path
+    function getFileName(filePath) {
+      if (!filePath) return '';
+      return filePath.split('/').pop();
+    }
+
+    // Get sound file path for an event based on preset selection
+    function getSoundPath(eventId, preset, customPath) {
+      if (preset === 'custom' && customPath) {
+        return customPath;
+      }
+      if (preset === 'default' || !preset) {
+        return DEFAULT_SOUNDS[eventId];
+      }
+      return SOUND_PRESETS[preset] || DEFAULT_SOUNDS[eventId];
+    }
+
+    // Handle preset dropdown change - show/hide custom file input
+    function setupPresetDropdown(eventConfig) {
+      const presetEl = document.getElementById(eventConfig.preset);
+      const customEl = document.getElementById(eventConfig.custom);
+
+      presetEl.addEventListener('change', async () => {
+        if (presetEl.value === 'custom') {
+          const filePath = await ipcRenderer.invoke('browse-audio-file');
+          if (filePath) {
+            customEl.value = getFileName(filePath);
+            customEl.dataset.fullPath = filePath;
+            customEl.style.display = 'block';
+          } else {
+            presetEl.value = 'default';
+            customEl.style.display = 'none';
+          }
+        } else {
+          customEl.style.display = 'none';
+          customEl.value = '';
+          customEl.dataset.fullPath = '';
+        }
+      });
+    }
+
+    // Setup test button for each event
+    function setupTestButton(eventConfig) {
+      const testBtn = document.getElementById('test' + eventConfig.id.charAt(0).toUpperCase() + eventConfig.id.slice(1) + 'Sound');
+      if (!testBtn) return;
+
+      testBtn.addEventListener('click', async () => {
+        const volume = parseInt(document.getElementById('audioVolume').value, 10);
+        const preset = document.getElementById(eventConfig.preset).value;
+        const customPath = document.getElementById(eventConfig.custom).dataset.fullPath;
+        const filePath = getSoundPath(eventConfig.id, preset, customPath);
+
+        await ipcRenderer.invoke('test-audio', { filePath, volume });
+      });
+    }
+
+    // Initialize all dropdowns and test buttons
+    SOUND_EVENTS.forEach(event => {
+      setupPresetDropdown(event);
+      setupTestButton(event);
+    });
+
+    // Open audio settings modal
+    document.getElementById('openAudioSettingsBtn').addEventListener('click', async () => {
+      const config = await ipcRenderer.invoke('get-config');
+      const audio = config.audio || {};
+
+      // Master toggle and volume
+      document.getElementById('audioEnabled').checked = audio.enabled !== false;
+      document.getElementById('audioVolume').value = audio.volume ?? 100;
+      document.getElementById('audioVolumeValue').textContent = (audio.volume ?? 100) + '%';
+
+      // Load each sound event settings
+      SOUND_EVENTS.forEach(event => {
+        const toggleEl = document.getElementById(event.toggle);
+        const presetEl = document.getElementById(event.preset);
+        const customEl = document.getElementById(event.custom);
+
+        // Set toggle state (default to true for listening events, false for TTS)
+        const defaultEnabled = !event.id.startsWith('tts');
+        toggleEl.checked = audio[event.id + 'Enabled'] !== false && (audio[event.id + 'Enabled'] === true || defaultEnabled);
+
+        // Set preset dropdown
+        const savedPreset = audio[event.id + 'Preset'] || 'default';
+        const savedCustom = audio[event.id + 'Custom'] || '';
+
+        if (savedCustom) {
+          presetEl.value = 'custom';
+          customEl.value = getFileName(savedCustom);
+          customEl.dataset.fullPath = savedCustom;
+          customEl.style.display = 'block';
+        } else {
+          presetEl.value = savedPreset;
+          customEl.style.display = 'none';
+          customEl.value = '';
+          customEl.dataset.fullPath = '';
+        }
+      });
+
+      audioSettingsModal.classList.add('show');
+    });
+
+    // Volume slider live update
+    document.getElementById('audioVolume').addEventListener('input', (e) => {
+      document.getElementById('audioVolumeValue').textContent = e.target.value + '%';
+    });
+
+    // Save audio settings
+    document.getElementById('audioSettingsSave').addEventListener('click', async () => {
+      const config = await ipcRenderer.invoke('get-config');
+
+      const newAudio = {
+        enabled: document.getElementById('audioEnabled').checked,
+        volume: parseInt(document.getElementById('audioVolume').value, 10)
+      };
+
+      // Save each sound event settings
+      SOUND_EVENTS.forEach(event => {
+        const toggleEl = document.getElementById(event.toggle);
+        const presetEl = document.getElementById(event.preset);
+        const customEl = document.getElementById(event.custom);
+
+        newAudio[event.id + 'Enabled'] = toggleEl.checked;
+        newAudio[event.id + 'Preset'] = presetEl.value;
+        newAudio[event.id + 'Custom'] = customEl.dataset.fullPath || null;
+      });
+
+      config.audio = newAudio;
+      await ipcRenderer.invoke('save-config', config);
+      audioSettingsModal.classList.remove('show');
+      updateAudioStatusIndicator();
+
+      console.log('[Audio Settings] Saved:', newAudio);
+      showToast('Audio settings saved');
+    });
+
+    // Cancel audio settings
+    document.getElementById('audioSettingsCancel').addEventListener('click', () => {
+      audioSettingsModal.classList.remove('show');
+    });
+
+    // Close modal on overlay click
+    audioSettingsModal.addEventListener('click', (e) => {
+      if (e.target === audioSettingsModal) {
+        audioSettingsModal.classList.remove('show');
+      }
     });
 
     // Docs link

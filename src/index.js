@@ -27,6 +27,8 @@ let isSpeaking = false;
 // Check if external TTS (Claude hook) is speaking
 const TTS_LOCK_FILE = '/tmp/claude-tts-speaking';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 
 // Clipboard watching for auto-read
 let lastClipboardContent = '';
@@ -221,17 +223,134 @@ function normalizeCommand(text) {
   return text.replace(/^computers\s+/, 'computer ');
 }
 
+// Audio settings config path
+const AUDIO_CONFIG_FILE = join(homedir(), '.config', 'speech2type', 'config.json');
+
+// Sound preset to file path mapping
+const SOUND_PRESETS = {
+  'pop': '/System/Library/Sounds/Pop.aiff',
+  'glass': '/System/Library/Sounds/Glass.aiff',
+  'ping': '/System/Library/Sounds/Ping.aiff',
+  'hero': '/System/Library/Sounds/Hero.aiff',
+  'funk': '/System/Library/Sounds/Funk.aiff',
+  'purr': '/System/Library/Sounds/Purr.aiff',
+  'submarine': '/System/Library/Sounds/Submarine.aiff',
+  'morse': '/System/Library/Sounds/Morse.aiff',
+  'basso': '/System/Library/Sounds/Basso.aiff',
+  'blow': '/System/Library/Sounds/Blow.aiff',
+  'bottle': '/System/Library/Sounds/Bottle.aiff',
+  'frog': '/System/Library/Sounds/Frog.aiff',
+  'sosumi': '/System/Library/Sounds/Sosumi.aiff',
+  'tink': '/System/Library/Sounds/Tink.aiff'
+};
+
+// Default sounds for each event type
+const DEFAULT_SOUNDS = {
+  start: '/System/Library/Sounds/Pop.aiff',
+  stop: '/System/Library/Sounds/Morse.aiff',
+  typing: '/System/Library/Sounds/Tink.aiff',
+  command: '/System/Library/Sounds/Funk.aiff',
+  error: '/System/Library/Sounds/Basso.aiff',
+  mode: '/System/Library/Sounds/Glass.aiff',
+  ttsStart: '/System/Library/Sounds/Purr.aiff',
+  ttsStop: '/System/Library/Sounds/Blow.aiff'
+};
+
+// Get audio settings from config file
+function getAudioSettings() {
+  try {
+    if (existsSync(AUDIO_CONFIG_FILE)) {
+      const config = JSON.parse(readFileSync(AUDIO_CONFIG_FILE, 'utf8'));
+      return config.audio || {};
+    }
+  } catch (e) {
+    // Ignore errors, use defaults
+  }
+  return {};
+}
+
+// Get sound file path for an event
+function getSoundFile(eventType) {
+  const audio = getAudioSettings();
+  const preset = audio[eventType + 'Preset'];
+  const custom = audio[eventType + 'Custom'];
+
+  if (custom) return custom;
+  if (preset && preset !== 'default' && SOUND_PRESETS[preset]) {
+    return SOUND_PRESETS[preset];
+  }
+  return DEFAULT_SOUNDS[eventType];
+}
+
+// Check if a sound event is enabled
+function isSoundEnabled(eventType) {
+  const audio = getAudioSettings();
+  if (audio.enabled === false) return false;
+  // Default to true for most events, false for TTS events
+  const defaultEnabled = !eventType.startsWith('tts');
+  return audio[eventType + 'Enabled'] !== false && (audio[eventType + 'Enabled'] === true || defaultEnabled);
+}
+
+// Get volume (0-100) as afplay volume (0-1 range, scaled)
+function getVolume(baseVolume = 0.25) {
+  const audio = getAudioSettings();
+  const volume = audio.volume ?? 100;
+  return (volume / 100) * baseVolume;
+}
+
+// Generic sound player
+function playSound(eventType, baseVolume = 0.25, rateFlag = '') {
+  if (!isSoundEnabled(eventType)) {
+    if (eventType !== 'typing') { // Don't spam logs for typing
+      console.log(`[audio] ${eventType} sound disabled - skipping`);
+    }
+    return;
+  }
+  const soundFile = getSoundFile(eventType);
+  const volume = getVolume(baseVolume);
+  console.log(`[audio] Playing ${eventType} sound (${Math.round(getAudioSettings().volume ?? 100)}%)`);
+  exec(`afplay -v ${volume} ${rateFlag} "${soundFile}" &`, () => {});
+}
+
 // Play a soft beep for audio feedback
 function playBeep() {
-  exec('afplay -v 0.3 /System/Library/Sounds/Pop.aiff &', () => {});
+  playSound('command', 0.3);
 }
 
 // Play subtle typing sounds (always 2 taps)
 function playTypingSound() {
-  exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+  if (!isSoundEnabled('typing')) return;
+  const soundFile = getSoundFile('typing');
+  const volume = getVolume(0.12);
+  exec(`afplay -v ${volume} "${soundFile}" &`, () => {});
   setTimeout(() => {
-    exec('afplay -v 0.12 /System/Library/Sounds/Tink.aiff &', () => {});
+    exec(`afplay -v ${volume} "${soundFile}" &`, () => {});
   }, 70);
+}
+
+// Play command recognized sound
+function playCommandSound() {
+  playSound('command', 0.25);
+}
+
+// Play error sound
+function playErrorSound() {
+  playSound('error', 0.3);
+}
+
+// Play mode switch sound
+function playModeSound() {
+  playSound('mode', 0.25);
+}
+
+// Play TTS start sound
+function playTTSStartSound() {
+  playSound('ttsStart', 0.2);
+}
+
+// Play TTS stop sound
+function playTTSStopSound() {
+  playSound('ttsStop', 0.2);
 }
 
 // Auto-read state
@@ -352,13 +471,11 @@ function matchAppName(spokenName) {
 }
 
 function playStartSound() {
-  // Ascending tone - Pop sound at higher pitch
-  exec('afplay -v 0.25 -r 1.5 /System/Library/Sounds/Pop.aiff &', () => {});
+  playSound('start', 0.25, '-r 1.5');
 }
 
 function playStopSound() {
-  // Descending tone - Morse sound at lower pitch, softer
-  exec('afplay -v 0.12 -r 0.7 /System/Library/Sounds/Morse.aiff &', () => {});
+  playSound('stop', 0.12, '-r 0.7');
 }
 
 async function initializeServices(config) {
@@ -502,7 +619,7 @@ async function executeGeneralAction(action) {
       // TTS off by default in general mode
       exec('rm -f /tmp/claude-auto-speak', () => {});
       console.log(chalk.green.bold('[mode] Switched to GENERAL mode (TTS off)'));
-      playBeep();
+      playModeSound();
       return true;
     case 'mode_claude':
       currentMode = 'claude';
@@ -511,6 +628,7 @@ async function executeGeneralAction(action) {
       // TTS on by default in Claude mode
       exec('touch /tmp/claude-auto-speak', () => {});
       console.log(chalk.cyan.bold('[mode] Switched to CLAUDE mode - TTS on, listening pauses after submit'));
+      playModeSound();
       // Soft welcome voice - use TTS lock to prevent mic pickup
       exec('touch /tmp/claude-tts-speaking && say -v Samantha -r 180 "welcome" && rm -f /tmp/claude-tts-speaking &', () => {});
       return true;
@@ -711,7 +829,7 @@ function startSession(config) {
         } else {
           exec('rm -f /tmp/claude-auto-speak', () => {});
         }
-        playBeep();
+        playModeSound();
 
         // If addon has push-to-talk enabled, stop listening
         if (addonLoader.isPushToTalkEnabled() && currentConfig) {
@@ -914,7 +1032,14 @@ async function startApplication(config, options = {}) {
   hotkeyService.on('toggle', () => (sessionActive ? stopSession(config) : startSession(config)));
 
   // Ctrl tap: quick toggle that also submits (presses Enter) when stopping
+  // Only enabled for addon modes (not general or claude)
   hotkeyService.on('ctrl_tap', async () => {
+    // Skip ctrl tap in general and claude modes
+    if (currentMode === 'general' || currentMode === 'claude') {
+      console.log(chalk.dim('[ctrl-tap] Disabled in general/claude mode'));
+      return;
+    }
+
     if (sessionActive) {
       // Stopping - type pending text, press Enter, then stop
       console.log(chalk.magenta('[ctrl-tap] Stopping and submitting...'));

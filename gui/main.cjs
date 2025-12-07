@@ -39,6 +39,10 @@ let isSpeaking = false;
 let animationInterval = null;
 let animationFrame = 0;
 
+// Mode change debounce - prevents state watcher from overwriting GUI-initiated mode changes
+let modeChangeTime = 0;
+const MODE_CHANGE_DEBOUNCE = 1000; // Ignore backend mode updates for 1 second after GUI change
+
 // Paths
 const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
 const TTS_SPEAKING_FILE = '/tmp/claude-tts-speaking';
@@ -92,12 +96,15 @@ const icons = {};
 
 /**
  * Create tray icon using nativeImage - Mode-specific animations
+ * Uses 2x resolution (32x32) for crisp retina display
  * @param {string} state - idle, listening, speaking, processing, error, disabled
  * @param {number} frame - animation frame (0-15) for smooth wave animation
  */
 function createTrayIcon(state, frame = 0) {
-  const width = 16;
-  const height = 16;
+  // Use 2x resolution for retina displays
+  const scale = 2;
+  const width = 16 * scale;  // 32px
+  const height = 16 * scale; // 32px
   const cacheKey = `${state}-${frame}-${currentMode}`;
 
   if (icons[cacheKey]) {
@@ -117,9 +124,9 @@ function createTrayIcon(state, frame = 0) {
   // Mode-specific colors when listening
   if (state === 'listening') {
     if (currentMode === 'claude') {
-      colorMap.listening = [217, 119, 87, 255];  // Claude orange/terracotta
+      colorMap.listening = [217, 119, 87, 255];   // Claude orange/terracotta
     } else if (currentMode === 'music') {
-      colorMap.listening = [0, 210, 211, 255];   // Ableton teal/cyan
+      colorMap.listening = [100, 160, 240, 255];  // Ableton blue
     }
   }
 
@@ -129,19 +136,15 @@ function createTrayIcon(state, frame = 0) {
 
   const buffer = Buffer.alloc(width * height * 4);
 
-  // Choose icon style based on mode
-  if (currentMode === 'claude' && isAnimated) {
-    // Claude mode: pulsing dot (AI/thinking indicator)
-    drawClaudeIcon(buffer, width, height, r, g, b, a, frame);
-  } else if (currentMode === 'music' && isAnimated) {
-    // Music mode: bouncing bars (equalizer style)
-    drawMusicIcon(buffer, width, height, r, g, b, a, frame);
-  } else {
-    // General mode: waveform bars
-    drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated);
-  }
+  // All modes use 3 bars - animation style varies by mode
+  drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, currentMode);
 
-  const icon = nativeImage.createFromBuffer(buffer, { width, height });
+  // Create image with proper scale factor for retina
+  const icon = nativeImage.createFromBuffer(buffer, {
+    width,
+    height,
+    scaleFactor: scale
+  });
 
   if (isTemplate) {
     icon.setTemplateImage(true);
@@ -152,42 +155,260 @@ function createTrayIcon(state, frame = 0) {
 }
 
 /**
- * Draw waveform bars (general mode)
+ * Helper: Set pixel with alpha blending
  */
-function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated) {
-  const barWidth = 2;
-  const gap = 3;
+function setPixel(buffer, width, x, y, r, g, b, alpha) {
+  if (x < 0 || x >= width || y < 0 || y >= width) return;
+  const idx = (Math.floor(y) * width + Math.floor(x)) * 4;
+  const existingAlpha = buffer[idx + 3];
+  if (alpha > existingAlpha) {
+    buffer[idx] = r;
+    buffer[idx + 1] = g;
+    buffer[idx + 2] = b;
+    buffer[idx + 3] = Math.min(255, alpha);
+  }
+}
+
+/**
+ * Helper: Draw anti-aliased filled circle
+ */
+function drawFilledCircle(buffer, width, cx, cy, radius, r, g, b, a) {
+  const r2 = radius * radius;
+  for (let y = Math.floor(cy - radius - 1); y <= Math.ceil(cy + radius + 1); y++) {
+    for (let x = Math.floor(cx - radius - 1); x <= Math.ceil(cx + radius + 1); x++) {
+      const dx = x - cx + 0.5;
+      const dy = y - cy + 0.5;
+      const dist2 = dx * dx + dy * dy;
+      const dist = Math.sqrt(dist2);
+
+      if (dist <= radius - 0.5) {
+        setPixel(buffer, width, x, y, r, g, b, a);
+      } else if (dist <= radius + 0.5) {
+        // Anti-alias edge
+        const coverage = Math.max(0, Math.min(1, radius + 0.5 - dist));
+        setPixel(buffer, width, x, y, r, g, b, Math.round(a * coverage));
+      }
+    }
+  }
+}
+
+/**
+ * Helper: Draw anti-aliased ellipse outline (almond eye shape)
+ */
+function drawEyeOutline(buffer, width, cx, cy, eyeW, eyeH, thickness, r, g, b, a) {
+  for (let y = Math.floor(cy - eyeH - 2); y <= Math.ceil(cy + eyeH + 2); y++) {
+    for (let x = Math.floor(cx - eyeW - 2); x <= Math.ceil(cx + eyeW + 2); x++) {
+      const dx = x - cx + 0.5;
+      const dy = y - cy + 0.5;
+
+      // Ellipse equation: (x/a)^2 + (y/b)^2 = 1
+      const ellipseVal = (dx * dx) / (eyeW * eyeW) + (dy * dy) / (eyeH * eyeH);
+
+      // Draw outline between inner and outer ellipse
+      const innerBound = 1 - thickness / Math.min(eyeW, eyeH);
+      const outerBound = 1 + thickness / Math.min(eyeW, eyeH);
+
+      if (ellipseVal >= innerBound && ellipseVal <= outerBound) {
+        // Calculate distance from ellipse edge for anti-aliasing
+        const distFromEdge = Math.abs(ellipseVal - 1) * Math.min(eyeW, eyeH);
+        const coverage = Math.max(0, Math.min(1, (thickness - distFromEdge) / 1.5));
+        setPixel(buffer, width, x, y, r, g, b, Math.round(a * coverage));
+      }
+    }
+  }
+}
+
+/**
+ * Draw eye icon (general mode) - animated pupil when listening
+ * Optimized for 32x32 hi-res rendering
+ */
+function drawEyeIcon(buffer, width, height, r, g, b, a, frame, isAnimated) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Scale parameters for 32x32 (2x of 16x16)
+  const scale = width / 16;
+
+  // Eye shape parameters (scaled)
+  const eyeWidth = 12 * scale;   // Horizontal radius
+  const eyeHeight = 5 * scale;   // Vertical radius
+  const outlineThickness = 1.5 * scale;
+
+  // Pupil parameters
+  let pupilOffsetX = 0;
+  let pupilRadius = 3 * scale;
+
+  if (isAnimated) {
+    // Smooth pupil movement
+    pupilOffsetX = Math.sin((frame / 16) * Math.PI * 2) * 2.5 * scale;
+    pupilRadius = (3 + Math.sin((frame / 16) * Math.PI * 4) * 0.5) * scale;
+  }
+
+  // Draw eye outline
+  drawEyeOutline(buffer, width, centerX, centerY, eyeWidth, eyeHeight, outlineThickness, r, g, b, a);
+
+  // Draw pupil (only if inside eye shape)
+  drawFilledCircle(buffer, width, centerX + pupilOffsetX, centerY, pupilRadius, r, g, b, a);
+}
+
+/**
+ * Draw Claude mode eye icon - eye with pulsing glow/aura (AI/mystical)
+ * Optimized for 32x32 hi-res rendering
+ */
+function drawClaudeEyeIcon(buffer, width, height, r, g, b, a, frame) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = width / 16;
+
+  // Eye parameters (scaled)
+  const eyeWidth = 11 * scale;
+  const eyeHeight = 4.5 * scale;
+  const outlineThickness = 1.5 * scale;
+
+  // Pulsing aura effect
+  const pulse = Math.sin((frame / 16) * Math.PI * 2) * 0.4 + 0.6;
+  const auraRadius = (13 + Math.sin((frame / 16) * Math.PI * 2) * 2) * scale;
+  const auraThickness = 1.5 * scale;
+
+  // Pupil pulses slightly
+  const pupilRadius = (3 + Math.sin((frame / 16) * Math.PI * 2) * 0.6) * scale;
+
+  // Draw outer aura ring
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = x - centerX + 0.5;
+      const dy = y - centerY + 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist >= auraRadius - auraThickness && dist <= auraRadius + auraThickness) {
+        const distFromRing = Math.abs(dist - auraRadius);
+        const coverage = Math.max(0, 1 - distFromRing / auraThickness);
+        const auraAlpha = Math.round(a * pulse * 0.5 * coverage);
+        setPixel(buffer, width, x, y, r, g, b, auraAlpha);
+      }
+    }
+  }
+
+  // Draw eye outline
+  drawEyeOutline(buffer, width, centerX, centerY, eyeWidth, eyeHeight, outlineThickness, r, g, b, a);
+
+  // Draw pupil
+  drawFilledCircle(buffer, width, centerX, centerY, pupilRadius, r, g, b, a);
+}
+
+/**
+ * Draw Music mode eye icon - eye with equalizer bars as eyelashes
+ * Optimized for 32x32 hi-res rendering
+ */
+function drawMusicEyeIcon(buffer, width, height, r, g, b, a, frame) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = width / 16;
+
+  // Eye parameters (scaled) - slightly smaller to make room for bars
+  const eyeWidth = 10 * scale;
+  const eyeHeight = 4 * scale;
+  const outlineThickness = 1.5 * scale;
+  const pupilRadius = 2.5 * scale;
+
+  // Draw eye outline
+  drawEyeOutline(buffer, width, centerX, centerY + 2 * scale, eyeWidth, eyeHeight, outlineThickness, r, g, b, a);
+
+  // Draw pupil
+  drawFilledCircle(buffer, width, centerX, centerY + 2 * scale, pupilRadius, r, g, b, a);
+
+  // Draw bouncing "eyelash" bars above eye
+  const barPositions = [-6, -2, 2, 6];  // Spread out more
+  const barWidth = 2 * scale;
+  const minH = 2 * scale;
+  const maxH = 7 * scale;
+
+  barPositions.forEach((offsetX, i) => {
+    const phase = (frame / 16) * Math.PI * 2 + i * 1.2;
+    const barHeight = minH + (maxH - minH) * (0.5 + Math.sin(phase) * 0.5);
+    const barX = centerX + offsetX * scale - barWidth / 2;
+    const barTop = centerY - eyeHeight - barHeight;
+
+    // Draw rounded bar
+    for (let y = Math.floor(barTop); y < Math.ceil(barTop + barHeight); y++) {
+      for (let x = Math.floor(barX); x < Math.ceil(barX + barWidth); x++) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          // Slight rounding at top
+          const distFromTop = y - barTop;
+          const distFromBottom = (barTop + barHeight) - y;
+          let alpha = a;
+          if (distFromTop < 1) alpha = Math.round(a * distFromTop);
+          setPixel(buffer, width, x, y, r, g, b, alpha);
+        }
+      }
+    }
+  });
+}
+
+// ============ ACTIVE ICONS (bar/waveform style) ============
+
+/**
+ * Draw waveform bars - unified icon for all modes
+ * Animation style varies by mode:
+ * - general: smooth sine wave
+ * - claude: bars pulse together (breathing)
+ * - music: energetic bouncing
+ * Scales automatically for hi-res (32x32)
+ */
+function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, mode = 'general') {
+  const scale = width / 16;
+  const barWidth = Math.round(2 * scale);
+  const gap = Math.round(3 * scale);
   const totalWidth = 3 * barWidth + 2 * gap;
   const startX = Math.floor((width - totalWidth) / 2);
-  const minH = 3;
-  const maxH = 11;
+  const minH = Math.round(3 * scale);
+  const maxH = Math.round(11 * scale);
 
   const getBarHeight = (barIndex) => {
-    if (!isAnimated) {
-      return [5, 8, 5][barIndex];
+    // Static heights when not animating
+    if (!isAnimated) return Math.round([5, 8, 5][barIndex] * scale);
+
+    const phase = (frame / 16) * Math.PI * 2;
+
+    if (mode === 'claude') {
+      // Claude: Outer bars orbit/seesaw around center - smooth continuous loop
+      // Left and right bars alternate heights like a seesaw, center stays stable
+      const heightRange = maxH - minH;
+      if (barIndex === 1) {
+        // Center bar: stable with very subtle pulse
+        return Math.round((6 + Math.sin(phase) * 0.5) * scale);
+      } else if (barIndex === 0) {
+        // Left bar
+        const wave = Math.sin(phase);
+        return Math.round(minH + heightRange * (0.5 + wave * 0.5));
+      } else {
+        // Right bar: opposite of left (180 degrees out of phase)
+        const wave = Math.sin(phase + Math.PI);
+        return Math.round(minH + heightRange * (0.5 + wave * 0.5));
+      }
+    } else if (mode === 'music') {
+      // Music: Energetic bounce with variation (slightly slower)
+      const barPhase = phase + barIndex * 1.0;
+      const bounce = Math.abs(Math.sin(barPhase));
+      return Math.round(minH + (maxH - minH) * bounce);
+    } else {
+      // General: Smooth flowing wave
+      const wave = Math.sin(phase + barIndex * 0.8);
+      return Math.round(minH + (maxH - minH) * (0.5 + wave * 0.45));
     }
-    const phase = (frame / 16) * Math.PI * 2 + barIndex * 0.8;
-    const wave = Math.sin(phase);
-    return Math.round(minH + (maxH - minH) * (0.5 + wave * 0.45));
   };
 
   for (let barIndex = 0; barIndex < 3; barIndex++) {
     const barX = startX + barIndex * (barWidth + gap);
     const barHeight = getBarHeight(barIndex);
     const barTop = Math.floor((height - barHeight) / 2);
-
     for (let y = barTop; y < barTop + barHeight; y++) {
       for (let x = barX; x < barX + barWidth; x++) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
           const idx = (y * width + x) * 4;
           let alpha = a;
-          if (y === barTop || y === barTop + barHeight - 1) {
-            alpha = Math.round(a * 0.7);
-          }
-          buffer[idx] = r;
-          buffer[idx + 1] = g;
-          buffer[idx + 2] = b;
-          buffer[idx + 3] = alpha;
+          if (y === barTop || y === barTop + barHeight - 1) alpha = Math.round(a * 0.7);
+          buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = alpha;
         }
       }
     }
@@ -195,16 +416,17 @@ function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated) 
 }
 
 /**
- * Draw Claude mode icon - pulsing concentric circles (thinking/AI)
+ * Draw Claude mode icon - pulsing circles
+ * Scales automatically for hi-res (32x32)
  */
 function drawClaudeIcon(buffer, width, height, r, g, b, a, frame) {
+  const scale = width / 16;
   const centerX = width / 2;
   const centerY = height / 2;
-
-  // Pulsing effect
   const pulse = Math.sin((frame / 16) * Math.PI * 2) * 0.3 + 0.7;
-  const innerRadius = 2;
-  const outerRadius = 5 + Math.sin((frame / 16) * Math.PI * 2) * 1.5;
+  const innerRadius = 2 * scale;
+  const outerRadius = (5 + Math.sin((frame / 16) * Math.PI * 2) * 1.5) * scale;
+  const ringThickness = 1 * scale;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -212,63 +434,51 @@ function drawClaudeIcon(buffer, width, height, r, g, b, a, frame) {
       const dy = y - centerY + 0.5;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const idx = (y * width + x) * 4;
-
-      // Inner solid dot
       if (dist <= innerRadius) {
-        buffer[idx] = r;
-        buffer[idx + 1] = g;
-        buffer[idx + 2] = b;
-        buffer[idx + 3] = a;
-      }
-      // Outer pulsing ring
-      else if (dist >= outerRadius - 1 && dist <= outerRadius + 0.5) {
+        buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = a;
+      } else if (dist >= outerRadius - ringThickness && dist <= outerRadius + ringThickness * 0.5) {
         const ringAlpha = Math.round(a * pulse * 0.6);
-        buffer[idx] = r;
-        buffer[idx + 1] = g;
-        buffer[idx + 2] = b;
-        buffer[idx + 3] = ringAlpha;
+        buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = ringAlpha;
       }
     }
   }
 }
 
 /**
- * Draw Music mode icon - equalizer bars bouncing
+ * Draw Music mode icon - equalizer bars
+ * Scales automatically for hi-res (32x32)
  */
 function drawMusicIcon(buffer, width, height, r, g, b, a, frame) {
-  // 4 thin bars like an equalizer
-  const barWidth = 2;
-  const gap = 2;
+  const scale = width / 16;
+  const barWidth = Math.round(2 * scale);
+  const gap = Math.round(2 * scale);
   const numBars = 4;
   const totalWidth = numBars * barWidth + (numBars - 1) * gap;
   const startX = Math.floor((width - totalWidth) / 2);
-  const minH = 2;
-  const maxH = 12;
+  const minH = Math.round(2 * scale);
+  const maxH = Math.round(12 * scale);
+  const bottomMargin = Math.round(2 * scale);
 
   for (let barIndex = 0; barIndex < numBars; barIndex++) {
-    // Each bar bounces with different phase
     const phase = (frame / 16) * Math.PI * 2 + barIndex * 1.2;
     const bounce = Math.abs(Math.sin(phase));
     const barHeight = Math.round(minH + (maxH - minH) * bounce);
     const barX = startX + barIndex * (barWidth + gap);
-    const barTop = height - 2 - barHeight; // Anchor at bottom
-
+    const barTop = height - bottomMargin - barHeight;
     for (let y = barTop; y < barTop + barHeight; y++) {
       for (let x = barX; x < barX + barWidth; x++) {
         if (x >= 0 && x < width && y >= 0 && y < height) {
           const idx = (y * width + x) * 4;
-          // Gradient from top (lighter) to bottom (full color)
           const gradientFactor = (y - barTop) / barHeight;
           const alpha = Math.round(a * (0.5 + gradientFactor * 0.5));
-          buffer[idx] = r;
-          buffer[idx + 1] = g;
-          buffer[idx + 2] = b;
-          buffer[idx + 3] = alpha;
+          buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = alpha;
         }
       }
     }
   }
 }
+
+// ============ EYE ICONS (kept for reference/future use) ============
 
 /**
  * Start icon animation for active states
@@ -1042,6 +1252,9 @@ function toggleListening() {
  * Set the current mode
  */
 function setMode(mode) {
+  // Record time to prevent state watcher from reverting
+  modeChangeTime = Date.now();
+
   currentMode = mode;
   tray.setContextMenu(buildContextMenu());
   updateTrayIcon();
@@ -1212,11 +1425,18 @@ function startStateWatcher() {
       if (fs.existsSync(S2T_STATUS_FILE)) {
         const status = JSON.parse(fs.readFileSync(S2T_STATUS_FILE, 'utf8'));
         isListening = status.listening;
-        if (status.mode === 'addon') {
-          currentMode = 'music';
-        } else {
-          currentMode = status.mode;
+
+        // Only update mode from backend if we haven't recently changed it from GUI
+        // This prevents the flickering when switching modes
+        const timeSinceModeChange = Date.now() - modeChangeTime;
+        if (timeSinceModeChange > MODE_CHANGE_DEBOUNCE) {
+          if (status.mode === 'addon') {
+            currentMode = 'music';
+          } else {
+            currentMode = status.mode;
+          }
         }
+
         // Sync TTS from actual file, not status.json (more reliable)
         ttsEnabled = fs.existsSync(TTS_CONTROL_FILE);
       }
@@ -1341,6 +1561,34 @@ ipcMain.handle('reset-hotkeys', () => {
   }
 });
 ipcMain.handle('format-hotkey', (event, hotkey) => formatHotkey(hotkey));
+
+// Audio file browser
+ipcMain.handle('browse-audio-file', async () => {
+  const { dialog } = require('electron');
+  const result = await dialog.showOpenDialog(settingsWindow, {
+    title: 'Select Sound File',
+    filters: [
+      { name: 'Audio Files', extensions: ['aiff', 'mp3', 'wav', 'm4a', 'ogg'] }
+    ],
+    properties: ['openFile']
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+// Test audio file playback
+ipcMain.handle('test-audio', (event, { filePath, volume }) => {
+  const { exec } = require('child_process');
+  const vol = (volume / 100) * 0.3;
+  const file = filePath || '/System/Library/Sounds/Pop.aiff';
+  exec(`afplay -v ${vol} "${file}"`, (err) => {
+    if (err) console.error('Audio test failed:', err.message);
+  });
+  return true;
+});
+
 ipcMain.on('open-addon-docs', (event, docsPath) => {
   // Open the markdown file with the default app (or show in Finder)
   shell.openPath(docsPath);
