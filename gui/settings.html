@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Speech2Type Settings</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      overflow: hidden !important;
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: rgba(30, 30, 30, 0.95);
+      color: #e5e5e5;
+      padding: 0;
+      user-select: none;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Fixed title bar area for window buttons */
+    .title-bar {
+      height: 40px;
+      min-height: 40px;
+      -webkit-app-region: drag;
+      flex-shrink: 0;
+    }
+
+    /* Main content area below title bar */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    /* Make interactive elements clickable */
+    input, select, button, label, .setting-row, .tab, a, .footer {
+      -webkit-app-region: no-drag;
+    }
+
+    /* Tab navigation */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      background: transparent;
+      padding: 0;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #666;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .tab:hover {
+      color: #aaa;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .tab-content {
+      display: none;
+      -webkit-app-region: no-drag;
+      overflow: hidden !important;
+      flex: 1;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Only Commands tab is scrollable */
+    #commands.active {
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      padding-top: 0;
+    }
+
+    /* Add spacing at top of commands container so content doesn't go under window buttons */
+    #commandsContainer {
+      padding-top: 0;
+    }
+
+    /* Collapsible command sections */
+    .command-section {
+      margin-bottom: 6px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .command-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .command-section-header:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .command-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 400;
+      font-size: 12px;
+      color: #999;
+      letter-spacing: 0.3px;
+    }
+
+    .command-section-title .chevron {
+      transition: transform 0.2s;
+      color: #555;
+      width: 10px;
+      height: 10px;
+    }
+
+    .command-section.collapsed .chevron {
+      transform: rotate(-90deg);
+    }
+
+    .command-section-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .command-section-content {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.25s ease-out;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .command-section-content-inner {
+      overflow: hidden;
+      padding: 4px 14px 8px 14px;
+    }
+
+    .command-section.collapsed .command-section-content {
+      grid-template-rows: 0fr;
+      border-top: none;
+    }
+
+    .command-section.collapsed .command-section-content-inner {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .command-section-content .command-item {
+      padding: 6px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .command-section-content .command-phrase {
+      color: #4ade80;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    .command-section-content .command-action {
+      color: #666;
+      font-size: 11px;
+      font-weight: 300;
+    }
+
+    .command-count {
+      font-size: 10px;
+      color: #555;
+      font-weight: 400;
+    }
+
+    .custom-command-delete-bg {
+      cursor: pointer;
+    }
+
+    /* Advanced mode toggle */
+    .advanced-section {
+      display: none;
+    }
+
+    body.advanced-mode .advanced-section {
+      display: block;
+    }
+
+    /* Hide advanced tabs when not in advanced mode */
+    .advanced-tab {
+      display: none;
+    }
+
+    body.advanced-mode .advanced-tab {
+      display: block;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: #737373;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-group {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      -webkit-app-region: no-drag;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .setting-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .setting-row.clickable {
+      cursor: pointer;
+    }
+
+    .setting-info {
+      flex: 1;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .setting-description {
+      font-size: 12px;
+      color: #737373;
+      margin-top: 2px;
+    }
+
+    /* Status indicator */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.stopped {
+      background: rgba(107, 114, 128, 0.2);
+      color: #9ca3af;
+    }
+
+    .status-badge.idle {
+      background: rgba(234, 179, 8, 0.2);
+      color: #eab308;
+    }
+
+    .status-badge.listening {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-badge.listening .status-dot {
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #404040;
+      transition: 0.2s;
+      border-radius: 26px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #22c55e;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(18px);
+    }
+
+    /* Text input */
+    input[type="text"],
+    input[type="password"] {
+      background: rgba(0, 0, 0, 0.3);
+      color: #e5e5e5;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      width: 200px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #22c55e;
+    }
+
+    input[type="text"]::placeholder {
+      color: #525252;
+    }
+
+    /* Select dropdown */
+    select {
+      background: rgba(0, 0, 0, 0.3);
+      color: #e5e5e5;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      min-width: 140px;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #22c55e;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: #22c55e;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #16a34a;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e5e5e5;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn.recording {
+      background: #22c55e;
+      color: #000;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Hotkey display */
+    .hotkey {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #a3a3a3;
+    }
+
+    /* Mode selector */
+    .mode-selector {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-option {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .mode-option:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .mode-option.selected {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .mode-option .mode-icon {
+      margin-bottom: 4px;
+      color: #a3a3a3;
+    }
+
+    .mode-option .mode-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .mode-option.selected .mode-icon {
+      color: #22c55e;
+    }
+
+    .mode-option .mode-name {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* Service controls */
+    .service-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: auto;
+      padding: 16px 20px 20px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: center;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+    }
+
+    .footer a {
+      color: #22c55e;
+      text-decoration: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    #docsLink {
+      display: inline-block;
+      padding: 4px 8px;
+    }
+
+    .made-with {
+      font-size: 12px;
+      color: #737373;
+      margin-top: 12px;
+      padding-bottom: 8px;
+    }
+
+    .made-with a {
+      color: #22c55e;
+      text-decoration: none;
+    }
+
+    .made-with a:hover {
+      text-decoration: underline;
+    }
+
+    .version {
+      font-size: 11px;
+      color: #525252;
+      margin-top: 4px;
+    }
+
+    /* Command reference */
+    .command-list {
+      font-size: 12px;
+    }
+
+    .command-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .command-item:last-child {
+      border-bottom: none;
+    }
+
+    .command-phrase {
+      color: #22c55e;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .command-action {
+      color: #737373;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #22c55e;
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      -webkit-app-region: no-drag;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: rgba(40, 40, 40, 0.98);
+      border-radius: 12px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: #a3a3a3;
+      margin-bottom: 16px;
+    }
+
+    .modal input[type="text"] {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal select {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    /* Custom command swipeable rows */
+    .custom-command-wrapper {
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1px;
+    }
+
+    .custom-command-row {
+      transition: transform 0.2s ease;
+      background: #2a2a2a;
+      position: relative;
+      z-index: 1;
+    }
+
+    .custom-command-row.swiping {
+      transition: none;
+    }
+
+    .custom-command-delete-bg {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      background: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .custom-command-row input[type="text"],
+    .custom-command-row select {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: #e5e5e5;
+      padding: 8px 12px;
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .custom-command-row input[type="text"]::placeholder {
+      color: #666;
+    }
+
+    .custom-command-row input[type="text"]:focus,
+    .custom-command-row select:focus {
+      outline: none;
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <!-- Title bar area for window buttons (fixed, not scrollable) -->
+  <div class="title-bar"></div>
+
+  <!-- Main content wrapper -->
+  <div class="main-content">
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab active" data-tab="general">General</button>
+    <button class="tab advanced-tab" data-tab="addons">Addons</button>
+    <button class="tab" data-tab="api">API</button>
+    <button class="tab advanced-tab" data-tab="hotkeys">Hotkeys</button>
+    <button class="tab advanced-tab" data-tab="commands">Commands</button>
+  </div>
+
+  <!-- General Tab -->
+  <div id="general" class="tab-content active">
+    <h2>Service Status</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Speech2Type Service</div>
+          <div class="setting-description">Voice recognition backend</div>
+        </div>
+        <span class="status-badge stopped" id="serviceStatus">
+          <span class="status-dot"></span>
+          <span id="serviceStatusText">Stopped</span>
+        </span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Service Controls</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="startBtn">Start</button>
+          <button class="btn btn-secondary" id="restartBtn">Restart</button>
+          <button class="btn btn-danger" id="stopBtn">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>Mode</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch;">
+        <div class="mode-selector">
+          <div class="mode-option selected" data-mode="general">
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </div>
+            <div class="mode-name">General</div>
+          </div>
+          <div class="mode-option" data-mode="music">
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
+            <div class="mode-name">Music</div>
+          </div>
+          <div class="mode-option" data-mode="claude">
+            <div class="mode-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+              </svg>
+            </div>
+            <div class="mode-name">Claude</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Listening</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Voice Input</div>
+          <div class="setting-description">Start or stop voice recognition</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="startListeningBtn">Start Listening</button>
+          <button class="btn btn-secondary" id="stopListeningBtn">Stop Listening</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>Text-to-Speech</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Auto-speak Claude responses</div>
+          <div class="setting-description">Read responses aloud using Piper TTS</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="ttsToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <h2>Settings</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Advanced Mode</div>
+          <div class="setting-description">Show addons, hotkeys, and commands tabs</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="advancedToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Addons Tab -->
+  <div id="addons" class="tab-content">
+    <h2>Installed Addons</h2>
+    <div class="setting-group" id="addonsList">
+      <div class="setting-row" style="justify-content: center; color: #737373;">
+        Loading addons...
+      </div>
+    </div>
+
+    <h2>Create New</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Create New Addon</div>
+          <div class="setting-description">Start with a template for your custom addon</div>
+        </div>
+        <button class="btn btn-primary" id="createAddonBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Addon
+        </button>
+      </div>
+    </div>
+
+    <h2>Import / Export</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Import from GitHub</div>
+          <div class="setting-description">Install addon from a GitHub repository URL</div>
+        </div>
+        <button class="btn btn-secondary" id="importGithubBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Import
+        </button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Import from Folder</div>
+          <div class="setting-description">Import addon from a local folder or .zip file</div>
+        </div>
+        <button class="btn btn-secondary" id="importLocalBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Browse
+        </button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Export Addon</div>
+          <div class="setting-description">Export an installed addon as a .zip file</div>
+        </div>
+        <button class="btn btn-secondary" id="exportAddonBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <h2>Documentation</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Create Your Own</div>
+          <div class="setting-description">
+            Learn how to build custom addons for any application
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="addonDocsLink">View Guide</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Keys Tab -->
+  <div id="api" class="tab-content">
+    <h2>Speech Recognition</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Deepgram API Key</div>
+          <div class="setting-description">Required for speech-to-text. Get a free key at deepgram.com</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="deepgramKey" placeholder="Enter your API key" style="flex: 1;">
+          <button class="btn btn-secondary" id="toggleKeyVisibility">Show</button>
+          <button class="btn btn-primary" id="saveApiKey">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>Text-to-Speech (Optional)</h2>
+    <div class="setting-group">
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Piper TTS Path</div>
+          <div class="setting-description">Path to Piper TTS binary (optional, falls back to macOS say)</div>
+        </div>
+        <input type="text" id="piperPath" placeholder="/usr/local/bin/piper" style="width: 100%;">
+      </div>
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div class="setting-info">
+          <div class="setting-label">Voice Model</div>
+          <div class="setting-description">Path to Piper voice model (.onnx file)</div>
+        </div>
+        <input type="text" id="voiceModel" placeholder="~/.local/share/piper-voices/en_US-lessac-high.onnx" style="width: 100%;">
+      </div>
+    </div>
+
+    <h2>Audio</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Sound Effects</div>
+          <div class="setting-description" id="audioStatusDescription">Configure audio feedback for listening events</div>
+        </div>
+        <button class="btn btn-secondary" id="openAudioSettingsBtn">
+          <span id="audioStatusIndicator" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #22c55e;"></span>
+          Configure
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotkeys Tab -->
+  <div id="hotkeys" class="tab-content">
+    <h2>Keyboard Shortcuts</h2>
+    <div class="setting-group" id="hotkeysList" style="max-height: 300px; overflow-y: auto;">
+      <div class="setting-row" style="justify-content: center; color: #737373;">
+        Loading hotkeys...
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Quick Toggle (Ctrl Tap)</div>
+          <div class="setting-description">Tap Ctrl to start/stop listening (auto-submits on stop)</div>
+        </div>
+        <span class="hotkey">Ctrl tap</span>
+      </div>
+    </div>
+
+    <h2>Actions</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Reset to Defaults</div>
+          <div class="setting-description">Restore all hotkeys to their default values</div>
+        </div>
+        <button class="btn btn-secondary" id="resetHotkeysBtn">Reset</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-description" style="font-size: 11px; color: #737373;">
+            Click "Record" to change a hotkey. Press any key (with or without modifiers). Changes require service restart.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commands Tab -->
+  <div id="commands" class="tab-content">
+    <div id="commandsContainer" style="padding-bottom: 20px;">
+      <!-- Dynamic content loaded by JavaScript -->
+      <div style="text-align: center; color: #666; padding: 40px;">Loading commands...</div>
+    </div>
+  </div>
+
+  </div><!-- End main-content -->
+
+  <!-- Footer -->
+  <div class="footer">
+    <a href="#" id="docsLink">View Documentation</a>
+    <div class="made-with">Made with ♥ by <a href="#" id="authorLink">@jessesep</a></div>
+    <div class="version">Speech2Type Enhanced v0.4.0</div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast">Saved!</div>
+
+  <!-- GitHub Import Modal -->
+  <div class="modal-overlay" id="githubModal">
+    <div class="modal">
+      <h3>Import from GitHub</h3>
+      <p>Enter the GitHub repository URL for the addon:</p>
+      <input type="text" id="githubUrl" placeholder="https://github.com/username/addon-name">
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="githubModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="githubModalImport">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal">
+      <h3>Export Addon</h3>
+      <p>Select an addon to export:</p>
+      <select id="exportAddonSelect">
+        <option value="">Loading addons...</option>
+      </select>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="exportModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="exportModalExport">Export</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Addon Modal -->
+  <div class="modal-overlay" id="createAddonModal">
+    <div class="modal" style="width: 450px;">
+      <h3>Create New Addon</h3>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Addon Name (lowercase, no spaces)</label>
+        <input type="text" id="newAddonName" placeholder="my-addon" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Display Name</label>
+        <input type="text" id="newAddonDisplayName" placeholder="My Custom Addon" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Mode Command (what you say to activate)</label>
+        <input type="text" id="newAddonModeCommand" placeholder="my mode" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Description</label>
+        <input type="text" id="newAddonDescription" placeholder="What does this addon do?" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 8px;">Options</label>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonCommandsOnly"> Commands only (no text typing)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonPushToTalk"> Push-to-talk (hold Cmd+Option)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="newAddonTTS"> Enable TTS by default
+          </label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="createAddonCancel">Cancel</button>
+        <button class="btn btn-primary" id="createAddonSubmit">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Addon Settings Modal -->
+  <div class="modal-overlay" id="addonSettingsModal">
+    <div class="modal" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+      <h3 id="addonSettingsTitle">Addon Settings</h3>
+      <div id="addonSettingsContent">
+        <!-- Dynamic content -->
+      </div>
+      <div class="modal-buttons" style="margin-top: 16px; display: flex; justify-content: space-between;">
+        <button class="btn btn-danger" id="addonSettingsRemove" style="margin-right: auto;">Hide Addon</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" id="addonSettingsCancel">Cancel</button>
+          <button class="btn btn-primary" id="addonSettingsSave">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Settings Modal -->
+  <div class="modal-overlay" id="audioSettingsModal">
+    <div class="modal" style="width: 520px; max-height: 85vh; overflow-y: auto;">
+      <h3>Audio Settings</h3>
+      <p style="margin-bottom: 20px;">Configure sound effects for events and actions</p>
+
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Master Toggle & Volume -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: #fff;">Sound Effects Enabled</div>
+            <div style="font-size: 12px; color: #737373; margin-top: 2px;">Master toggle for all sounds</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="audioEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Volume Slider -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 13px; color: #e5e5e5;">Master Volume</div>
+            <div style="font-size: 13px; color: #a855f7; font-weight: 500;" id="audioVolumeValue">100%</div>
+          </div>
+          <input type="range" id="audioVolume" min="0" max="100" value="100" style="width: 100%; accent-color: #a855f7;">
+        </div>
+
+        <!-- Listening Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Listening Events</div>
+
+          <!-- Start Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Start Listening</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioStartSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="startSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Pop (Default)</option>
+                <option value="glass">Glass</option>
+                <option value="ping">Ping</option>
+                <option value="hero">Hero</option>
+                <option value="funk">Funk</option>
+                <option value="purr">Purr</option>
+                <option value="submarine">Submarine</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testStartSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customStartSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Stop Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Stop Listening</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioStopSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="stopSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Morse (Default)</option>
+                <option value="basso">Basso</option>
+                <option value="blow">Blow</option>
+                <option value="bottle">Bottle</option>
+                <option value="frog">Frog</option>
+                <option value="sosumi">Sosumi</option>
+                <option value="tink">Tink</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testStopSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customStopSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Typing Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Typing Feedback</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTypingSounds" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="typingSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Tink (Default)</option>
+                <option value="pop">Pop</option>
+                <option value="morse">Morse</option>
+                <option value="ping">Ping</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTypingSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTypingSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+
+        <!-- Command & Action Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Commands & Actions</div>
+
+          <!-- Command Recognized Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Command Recognized</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioCommandSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="commandSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Funk (Default)</option>
+                <option value="glass">Glass</option>
+                <option value="hero">Hero</option>
+                <option value="ping">Ping</option>
+                <option value="pop">Pop</option>
+                <option value="purr">Purr</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testCommandSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customCommandSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Error Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Error / Failed</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioErrorSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="errorSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Basso (Default)</option>
+                <option value="sosumi">Sosumi</option>
+                <option value="blow">Blow</option>
+                <option value="bottle">Bottle</option>
+                <option value="frog">Frog</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testErrorSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customErrorSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- Mode Switch Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">Mode Switch</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioModeSound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="modeSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Glass (Default)</option>
+                <option value="hero">Hero</option>
+                <option value="ping">Ping</option>
+                <option value="submarine">Submarine</option>
+                <option value="purr">Purr</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testModeSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customModeSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+
+        <!-- TTS Events Section -->
+        <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div style="font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 12px;">Text-to-Speech</div>
+
+          <!-- TTS Start Sound -->
+          <div class="sound-event-row" style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">TTS Started</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTTSStartSound">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="ttsStartSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Purr (Default)</option>
+                <option value="pop">Pop</option>
+                <option value="ping">Ping</option>
+                <option value="submarine">Submarine</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTTSStartSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTTSStartSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+
+          <!-- TTS Stop Sound -->
+          <div class="sound-event-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 13px; color: #e5e5e5;">TTS Stopped</div>
+              <label class="toggle" style="transform: scale(0.8);">
+                <input type="checkbox" id="audioTTSStopSound">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <select id="ttsStopSoundPreset" style="flex: 1; font-size: 12px; padding: 6px 8px;">
+                <option value="default">Blow (Default)</option>
+                <option value="basso">Basso</option>
+                <option value="bottle">Bottle</option>
+                <option value="tink">Tink</option>
+                <option value="custom">Custom File...</option>
+              </select>
+              <button class="btn btn-secondary" id="testTTSStopSound" style="padding: 6px 10px; font-size: 11px;">▶</button>
+            </div>
+            <input type="text" id="customTTSStopSound" placeholder="Select custom file..." style="display: none; margin-top: 6px; font-size: 12px; width: 100%;" readonly>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons" style="margin-top: 24px;">
+        <button class="btn btn-secondary" id="audioSettingsCancel">Cancel</button>
+        <button class="btn btn-primary" id="audioSettingsSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+
+    const TTS_CONTROL_FILE = '/tmp/claude-auto-speak';
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Load initial state
+    async function loadState() {
+      const state = await ipcRenderer.invoke('get-state');
+      const config = await ipcRenderer.invoke('get-config');
+
+      // Service status
+      updateServiceStatus(state.isServiceRunning, state.isListening);
+
+      // Mode
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === state.currentMode);
+      });
+
+      // TTS
+      document.getElementById('ttsToggle').checked = state.ttsEnabled;
+
+      // API Key (masked)
+      if (config.deepgramApiKey) {
+        document.getElementById('deepgramKey').value = config.deepgramApiKey;
+      }
+
+      // Piper settings
+      if (config.piperPath) {
+        document.getElementById('piperPath').value = config.piperPath;
+      }
+      if (config.voiceModel) {
+        document.getElementById('voiceModel').value = config.voiceModel;
+      }
+    }
+
+    function updateServiceStatus(running, listening) {
+      const badge = document.getElementById('serviceStatus');
+      const text = document.getElementById('serviceStatusText');
+
+      // Three states: stopped, idle (running but not listening), listening
+      let state = 'stopped';
+      let stateText = 'Stopped';
+
+      if (running) {
+        if (listening) {
+          state = 'listening';
+          stateText = 'Listening';
+        } else {
+          state = 'idle';
+          stateText = 'Idle';
+        }
+      }
+
+      badge.className = 'status-badge ' + state;
+      text.textContent = stateText;
+
+      document.getElementById('startBtn').disabled = running;
+      document.getElementById('stopBtn').disabled = !running;
+    }
+
+    // Show toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // Service controls
+    document.getElementById('startBtn').addEventListener('click', () => {
+      ipcRenderer.send('start-service');
+      setTimeout(loadState, 1000);
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', () => {
+      ipcRenderer.send('stop-service');
+      setTimeout(loadState, 500);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      ipcRenderer.send('restart-service');
+      setTimeout(loadState, 1500);
+    });
+
+    // Listening controls
+    document.getElementById('startListeningBtn').addEventListener('click', () => {
+      ipcRenderer.send('start-listening');
+    });
+
+    document.getElementById('stopListeningBtn').addEventListener('click', () => {
+      ipcRenderer.send('stop-listening');
+    });
+
+    // Mode selection
+    document.querySelectorAll('.mode-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        ipcRenderer.send('set-mode', opt.dataset.mode);
+      });
+    });
+
+    // TTS toggle
+    document.getElementById('ttsToggle').addEventListener('change', (e) => {
+      console.log('Sending set-tts:', e.target.checked);
+      ipcRenderer.send('set-tts', e.target.checked);
+    });
+
+    // Advanced mode toggle
+    const advancedToggle = document.getElementById('advancedToggle');
+
+    // Load saved advanced mode preference
+    const savedAdvanced = localStorage.getItem('advancedMode') === 'true';
+    advancedToggle.checked = savedAdvanced;
+    if (savedAdvanced) {
+      document.body.classList.add('advanced-mode');
+    }
+
+    advancedToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.body.classList.add('advanced-mode');
+        localStorage.setItem('advancedMode', 'true');
+      } else {
+        document.body.classList.remove('advanced-mode');
+        localStorage.setItem('advancedMode', 'false');
+        // Switch to General tab if currently on an advanced tab
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.classList.contains('advanced-tab')) {
+          document.querySelector('.tab[data-tab="general"]').click();
+        }
+      }
+    });
+
+    // API Key
+    document.getElementById('toggleKeyVisibility').addEventListener('click', () => {
+      const input = document.getElementById('deepgramKey');
+      const btn = document.getElementById('toggleKeyVisibility');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+      }
+    });
+
+    document.getElementById('saveApiKey').addEventListener('click', async () => {
+      const key = document.getElementById('deepgramKey').value.trim();
+      if (key) {
+        const config = await ipcRenderer.invoke('get-config');
+        config.deepgramApiKey = key;
+        await ipcRenderer.invoke('save-config', config);
+        showToast('API Key saved!');
+      }
+    });
+
+    // Piper path - save on blur
+    document.getElementById('piperPath').addEventListener('blur', async () => {
+      const piperPath = document.getElementById('piperPath').value.trim();
+      const config = await ipcRenderer.invoke('get-config');
+      config.piperPath = piperPath;
+      await ipcRenderer.invoke('save-config', config);
+    });
+
+    document.getElementById('voiceModel').addEventListener('blur', async () => {
+      const voiceModel = document.getElementById('voiceModel').value.trim();
+      const config = await ipcRenderer.invoke('get-config');
+      config.voiceModel = voiceModel;
+      await ipcRenderer.invoke('save-config', config);
+    });
+
+    // Audio settings modal
+    const audioSettingsModal = document.getElementById('audioSettingsModal');
+
+    // Sound preset to file path mapping
+    const SOUND_PRESETS = {
+      // System sounds
+      'default': null, // Will use hardcoded default per event
+      'pop': '/System/Library/Sounds/Pop.aiff',
+      'glass': '/System/Library/Sounds/Glass.aiff',
+      'ping': '/System/Library/Sounds/Ping.aiff',
+      'hero': '/System/Library/Sounds/Hero.aiff',
+      'funk': '/System/Library/Sounds/Funk.aiff',
+      'purr': '/System/Library/Sounds/Purr.aiff',
+      'submarine': '/System/Library/Sounds/Submarine.aiff',
+      'morse': '/System/Library/Sounds/Morse.aiff',
+      'basso': '/System/Library/Sounds/Basso.aiff',
+      'blow': '/System/Library/Sounds/Blow.aiff',
+      'bottle': '/System/Library/Sounds/Bottle.aiff',
+      'frog': '/System/Library/Sounds/Frog.aiff',
+      'sosumi': '/System/Library/Sounds/Sosumi.aiff',
+      'tink': '/System/Library/Sounds/Tink.aiff',
+      'custom': 'custom' // Special marker
+    };
+
+    // Default sounds for each event type
+    const DEFAULT_SOUNDS = {
+      start: '/System/Library/Sounds/Pop.aiff',
+      stop: '/System/Library/Sounds/Morse.aiff',
+      typing: '/System/Library/Sounds/Tink.aiff',
+      command: '/System/Library/Sounds/Funk.aiff',
+      error: '/System/Library/Sounds/Basso.aiff',
+      mode: '/System/Library/Sounds/Glass.aiff',
+      ttsStart: '/System/Library/Sounds/Purr.aiff',
+      ttsStop: '/System/Library/Sounds/Blow.aiff'
+    };
+
+    // All sound event configs
+    const SOUND_EVENTS = [
+      { id: 'start', toggle: 'audioStartSound', preset: 'startSoundPreset', custom: 'customStartSound' },
+      { id: 'stop', toggle: 'audioStopSound', preset: 'stopSoundPreset', custom: 'customStopSound' },
+      { id: 'typing', toggle: 'audioTypingSounds', preset: 'typingSoundPreset', custom: 'customTypingSound' },
+      { id: 'command', toggle: 'audioCommandSound', preset: 'commandSoundPreset', custom: 'customCommandSound' },
+      { id: 'error', toggle: 'audioErrorSound', preset: 'errorSoundPreset', custom: 'customErrorSound' },
+      { id: 'mode', toggle: 'audioModeSound', preset: 'modeSoundPreset', custom: 'customModeSound' },
+      { id: 'ttsStart', toggle: 'audioTTSStartSound', preset: 'ttsStartSoundPreset', custom: 'customTTSStartSound' },
+      { id: 'ttsStop', toggle: 'audioTTSStopSound', preset: 'ttsStopSoundPreset', custom: 'customTTSStopSound' }
+    ];
+
+    // Update audio status indicator
+    async function updateAudioStatusIndicator() {
+      const config = await ipcRenderer.invoke('get-config');
+      const audio = config.audio || {};
+      const indicator = document.getElementById('audioStatusIndicator');
+      const description = document.getElementById('audioStatusDescription');
+
+      if (audio.enabled === false) {
+        indicator.style.background = '#6b7280';
+        description.textContent = 'Sound effects disabled';
+      } else {
+        indicator.style.background = '#22c55e';
+        const count = SOUND_EVENTS.filter(e => audio[e.id + 'Sound'] !== false && audio[e.id + 'Enabled'] !== false).length;
+        description.textContent = `${count} sound events enabled (${audio.volume ?? 100}%)`;
+      }
+    }
+
+    updateAudioStatusIndicator();
+
+    // Helper to show just filename from path
+    function getFileName(filePath) {
+      if (!filePath) return '';
+      return filePath.split('/').pop();
+    }
+
+    // Get sound file path for an event based on preset selection
+    function getSoundPath(eventId, preset, customPath) {
+      if (preset === 'custom' && customPath) {
+        return customPath;
+      }
+      if (preset === 'default' || !preset) {
+        return DEFAULT_SOUNDS[eventId];
+      }
+      return SOUND_PRESETS[preset] || DEFAULT_SOUNDS[eventId];
+    }
+
+    // Handle preset dropdown change - show/hide custom file input
+    function setupPresetDropdown(eventConfig) {
+      const presetEl = document.getElementById(eventConfig.preset);
+      const customEl = document.getElementById(eventConfig.custom);
+
+      presetEl.addEventListener('change', async () => {
+        if (presetEl.value === 'custom') {
+          const filePath = await ipcRenderer.invoke('browse-audio-file');
+          if (filePath) {
+            customEl.value = getFileName(filePath);
+            customEl.dataset.fullPath = filePath;
+            customEl.style.display = 'block';
+          } else {
+            presetEl.value = 'default';
+            customEl.style.display = 'none';
+          }
+        } else {
+          customEl.style.display = 'none';
+          customEl.value = '';
+          customEl.dataset.fullPath = '';
+        }
+      });
+    }
+
+    // Setup test button for each event
+    function setupTestButton(eventConfig) {
+      const testBtn = document.getElementById('test' + eventConfig.id.charAt(0).toUpperCase() + eventConfig.id.slice(1) + 'Sound');
+      if (!testBtn) return;
+
+      testBtn.addEventListener('click', async () => {
+        const volume = parseInt(document.getElementById('audioVolume').value, 10);
+        const preset = document.getElementById(eventConfig.preset).value;
+        const customPath = document.getElementById(eventConfig.custom).dataset.fullPath;
+        const filePath = getSoundPath(eventConfig.id, preset, customPath);
+
+        await ipcRenderer.invoke('test-audio', { filePath, volume });
+      });
+    }
+
+    // Initialize all dropdowns and test buttons
+    SOUND_EVENTS.forEach(event => {
+      setupPresetDropdown(event);
+      setupTestButton(event);
+    });
+
+    // Open audio settings modal
+    document.getElementById('openAudioSettingsBtn').addEventListener('click', async () => {
+      const config = await ipcRenderer.invoke('get-config');
+      const audio = config.audio || {};
+
+      // Master toggle and volume
+      document.getElementById('audioEnabled').checked = audio.enabled !== false;
+      document.getElementById('audioVolume').value = audio.volume ?? 100;
+      document.getElementById('audioVolumeValue').textContent = (audio.volume ?? 100) + '%';
+
+      // Load each sound event settings
+      SOUND_EVENTS.forEach(event => {
+        const toggleEl = document.getElementById(event.toggle);
+        const presetEl = document.getElementById(event.preset);
+        const customEl = document.getElementById(event.custom);
+
+        // Set toggle state (default to true for listening events, false for TTS)
+        const defaultEnabled = !event.id.startsWith('tts');
+        toggleEl.checked = audio[event.id + 'Enabled'] !== false && (audio[event.id + 'Enabled'] === true || defaultEnabled);
+
+        // Set preset dropdown
+        const savedPreset = audio[event.id + 'Preset'] || 'default';
+        const savedCustom = audio[event.id + 'Custom'] || '';
+
+        if (savedCustom) {
+          presetEl.value = 'custom';
+          customEl.value = getFileName(savedCustom);
+          customEl.dataset.fullPath = savedCustom;
+          customEl.style.display = 'block';
+        } else {
+          presetEl.value = savedPreset;
+          customEl.style.display = 'none';
+          customEl.value = '';
+          customEl.dataset.fullPath = '';
+        }
+      });
+
+      audioSettingsModal.classList.add('show');
+    });
+
+    // Volume slider live update
+    document.getElementById('audioVolume').addEventListener('input', (e) => {
+      document.getElementById('audioVolumeValue').textContent = e.target.value + '%';
+    });
+
+    // Save audio settings
+    document.getElementById('audioSettingsSave').addEventListener('click', async () => {
+      const config = await ipcRenderer.invoke('get-config');
+
+      const newAudio = {
+        enabled: document.getElementById('audioEnabled').checked,
+        volume: parseInt(document.getElementById('audioVolume').value, 10)
+      };
+
+      // Save each sound event settings
+      SOUND_EVENTS.forEach(event => {
+        const toggleEl = document.getElementById(event.toggle);
+        const presetEl = document.getElementById(event.preset);
+        const customEl = document.getElementById(event.custom);
+
+        newAudio[event.id + 'Enabled'] = toggleEl.checked;
+        newAudio[event.id + 'Preset'] = presetEl.value;
+        newAudio[event.id + 'Custom'] = customEl.dataset.fullPath || null;
+      });
+
+      config.audio = newAudio;
+      await ipcRenderer.invoke('save-config', config);
+      audioSettingsModal.classList.remove('show');
+      updateAudioStatusIndicator();
+
+      console.log('[Audio Settings] Saved:', newAudio);
+      showToast('Audio settings saved');
+    });
+
+    // Cancel audio settings
+    document.getElementById('audioSettingsCancel').addEventListener('click', () => {
+      audioSettingsModal.classList.remove('show');
+    });
+
+    // Close modal on overlay click
+    audioSettingsModal.addEventListener('click', (e) => {
+      if (e.target === audioSettingsModal) {
+        audioSettingsModal.classList.remove('show');
+      }
+    });
+
+    // Docs link
+    document.getElementById('docsLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type/tree/gui-implementation');
+    });
+
+    // Author link
+    document.getElementById('authorLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('open-external', 'https://github.com/jessesep');
+    });
+
+    // Addon docs link
+    document.getElementById('addonDocsLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.send('open-external', 'https://github.com/jessesep/speech2type/blob/gui-implementation/docs/creating-addons.md');
+    });
+
+    // Load and display addons
+    async function loadAddons() {
+      const addons = await ipcRenderer.invoke('get-addons');
+      const container = document.getElementById('addonsList');
+
+      if (!addons || addons.length === 0) {
+        container.innerHTML = `
+          <div class="setting-row" style="justify-content: center; color: #737373;">
+            No addons installed. Create one in the addons/ folder.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = addons.map(addon => `
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-label">
+              ${addon.displayName || addon.name}
+              ${addon.docsPath ? `<a href="#" class="addon-docs-link" data-docs="${addon.docsPath}" style="margin-left: 8px; font-size: 11px; color: #22c55e;">Docs</a>` : ''}
+            </div>
+            <div class="setting-description">
+              ${addon.description || 'No description'}
+              ${addon.modeCommand ? `<br><span style="color: #22c55e;">"computer ${addon.modeCommand}"</span>` : ''}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-secondary addon-settings-btn" data-addon="${addon.name}" style="padding: 6px 10px; font-size: 12px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+            <label class="toggle">
+              <input type="checkbox" data-addon="${addon.name}" ${addon.enabled ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      `).join('');
+
+      // Add event listeners to toggles
+      container.querySelectorAll('input[type="checkbox"]').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const addonName = e.target.dataset.addon;
+          const enabled = e.target.checked;
+          await ipcRenderer.invoke('toggle-addon', { name: addonName, enabled });
+          showToast(`${addonName} ${enabled ? 'enabled' : 'disabled'}. Restart service to apply.`);
+        });
+      });
+
+      // Add event listeners to docs links
+      container.querySelectorAll('.addon-docs-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const docsPath = e.target.dataset.docs;
+          ipcRenderer.send('open-addon-docs', docsPath);
+        });
+      });
+
+      // Add event listeners to settings buttons
+      container.querySelectorAll('.addon-settings-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const addonName = e.currentTarget.dataset.addon;
+          openAddonSettings(addonName);
+        });
+      });
+
+      // Update export modal select
+      const exportSelect = document.getElementById('exportAddonSelect');
+      exportSelect.innerHTML = addons.map(addon =>
+        `<option value="${addon.name}">${addon.displayName || addon.name}</option>`
+      ).join('');
+    }
+
+    // GitHub Import Modal
+    const githubModal = document.getElementById('githubModal');
+    const githubUrl = document.getElementById('githubUrl');
+
+    document.getElementById('importGithubBtn').addEventListener('click', () => {
+      githubUrl.value = '';
+      githubModal.classList.add('show');
+      githubUrl.focus();
+    });
+
+    document.getElementById('githubModalCancel').addEventListener('click', () => {
+      githubModal.classList.remove('show');
+    });
+
+    document.getElementById('githubModalImport').addEventListener('click', async () => {
+      const url = githubUrl.value.trim();
+      if (!url) {
+        showToast('Please enter a GitHub URL');
+        return;
+      }
+
+      showToast('Importing addon...');
+      githubModal.classList.remove('show');
+
+      const result = await ipcRenderer.invoke('import-addon-github', url);
+      if (result.success) {
+        showToast(`Imported: ${result.name}. Restart service to use.`);
+        loadAddons();
+      } else {
+        showToast(`Import failed: ${result.error}`);
+      }
+    });
+
+    // Close modal on overlay click
+    githubModal.addEventListener('click', (e) => {
+      if (e.target === githubModal) githubModal.classList.remove('show');
+    });
+
+    // Import from local folder
+    document.getElementById('importLocalBtn').addEventListener('click', async () => {
+      const result = await ipcRenderer.invoke('import-addon-local');
+      if (result.success) {
+        showToast(`Imported: ${result.name}. Restart service to use.`);
+        loadAddons();
+      } else if (result.error) {
+        showToast(`Import failed: ${result.error}`);
+      }
+    });
+
+    // Export Modal
+    const exportModal = document.getElementById('exportModal');
+
+    document.getElementById('exportAddonBtn').addEventListener('click', () => {
+      exportModal.classList.add('show');
+    });
+
+    document.getElementById('exportModalCancel').addEventListener('click', () => {
+      exportModal.classList.remove('show');
+    });
+
+    document.getElementById('exportModalExport').addEventListener('click', async () => {
+      const addonName = document.getElementById('exportAddonSelect').value;
+      if (!addonName) {
+        showToast('Please select an addon');
+        return;
+      }
+
+      exportModal.classList.remove('show');
+      const result = await ipcRenderer.invoke('export-addon', addonName);
+      if (result.success) {
+        showToast(`Exported to: ${result.path}`);
+      } else {
+        showToast(`Export failed: ${result.error}`);
+      }
+    });
+
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) exportModal.classList.remove('show');
+    });
+
+    // Create Addon Modal
+    const createAddonModal = document.getElementById('createAddonModal');
+
+    document.getElementById('createAddonBtn').addEventListener('click', () => {
+      // Reset form
+      document.getElementById('newAddonName').value = '';
+      document.getElementById('newAddonDisplayName').value = '';
+      document.getElementById('newAddonModeCommand').value = '';
+      document.getElementById('newAddonDescription').value = '';
+      document.getElementById('newAddonCommandsOnly').checked = false;
+      document.getElementById('newAddonPushToTalk').checked = false;
+      document.getElementById('newAddonTTS').checked = false;
+      createAddonModal.classList.add('show');
+      document.getElementById('newAddonName').focus();
+    });
+
+    document.getElementById('createAddonCancel').addEventListener('click', () => {
+      createAddonModal.classList.remove('show');
+    });
+
+    document.getElementById('createAddonSubmit').addEventListener('click', async () => {
+      const name = document.getElementById('newAddonName').value.trim().toLowerCase().replace(/\s+/g, '-');
+      const displayName = document.getElementById('newAddonDisplayName').value.trim();
+      const modeCommand = document.getElementById('newAddonModeCommand').value.trim();
+      const description = document.getElementById('newAddonDescription').value.trim();
+      const commandsOnly = document.getElementById('newAddonCommandsOnly').checked;
+      const pushToTalk = document.getElementById('newAddonPushToTalk').checked;
+      const ttsEnabled = document.getElementById('newAddonTTS').checked;
+
+      if (!name) {
+        showToast('Please enter an addon name');
+        return;
+      }
+      if (!modeCommand) {
+        showToast('Please enter a mode command');
+        return;
+      }
+
+      createAddonModal.classList.remove('show');
+      const result = await ipcRenderer.invoke('create-addon', {
+        name, displayName, modeCommand, description, commandsOnly, pushToTalk, ttsEnabled
+      });
+
+      if (result.success) {
+        showToast(`Created addon: ${name}`);
+        loadAddons();
+      } else {
+        showToast(`Failed: ${result.error}`);
+      }
+    });
+
+    createAddonModal.addEventListener('click', (e) => {
+      if (e.target === createAddonModal) createAddonModal.classList.remove('show');
+    });
+
+    // Addon Settings Modal
+    const addonSettingsModal = document.getElementById('addonSettingsModal');
+    let currentEditingAddon = null;
+
+    // Available actions for custom commands dropdown
+    const availableActions = [
+      { value: 'play', label: 'Play' },
+      { value: 'stop', label: 'Stop' },
+      { value: 'continue', label: 'Continue' },
+      { value: 'record', label: 'Record' },
+      { value: 'overdub', label: 'Overdub' },
+      { value: 'tap_tempo', label: 'Tap Tempo' },
+      { value: 'undo', label: 'Undo' },
+      { value: 'redo', label: 'Redo' },
+      { value: 'metronome_on', label: 'Metronome On' },
+      { value: 'metronome_off', label: 'Metronome Off' },
+      { value: 'metronome_toggle', label: 'Metronome Toggle' },
+      { value: 'loop_on', label: 'Loop On' },
+      { value: 'loop_off', label: 'Loop Off' },
+      { value: 'loop_toggle', label: 'Loop Toggle' },
+      { value: 'stop_all', label: 'Stop All Clips' },
+      { value: 'next_cue', label: 'Next Cue' },
+      { value: 'prev_cue', label: 'Previous Cue' },
+      { value: 'create_audio', label: 'Create Audio Track' },
+      { value: 'create_midi', label: 'Create MIDI Track' },
+      { value: 'create_return', label: 'Create Return Track' },
+      { value: 'create_scene', label: 'Create Scene' },
+      { value: 'capture_midi', label: 'Capture MIDI' },
+      { value: 'find', label: 'Find/Search' },
+    ];
+
+    function getActionOptions(selectedValue = '') {
+      return availableActions.map(a =>
+        `<option value="${a.value}" ${a.value === selectedValue ? 'selected' : ''}>${a.label}</option>`
+      ).join('');
+    }
+
+    async function openAddonSettings(addonName) {
+      currentEditingAddon = addonName;
+      const settings = await ipcRenderer.invoke('get-addon-settings', addonName);
+      const addons = await ipcRenderer.invoke('get-addons');
+      const addon = addons.find(a => a.name === addonName);
+
+      document.getElementById('addonSettingsTitle').textContent = `${addon?.displayName || addonName} Settings`;
+
+      const content = document.getElementById('addonSettingsContent');
+      content.innerHTML = `
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 13px; color: #a3a3a3; margin-bottom: 8px;">Behavior</h4>
+          <div class="setting-group">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Commands Only</div>
+                <div class="setting-description">Don't type text, only execute commands</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsCommandsOnly" ${settings.commandsOnly ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Toggle Hotkey to Speak</div>
+                <div class="setting-description">Use hotkey toggle instead of always listening</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsPushToTalk" ${settings.pushToTalk ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">TTS Enabled</div>
+                <div class="setting-description">Enable text-to-speech when entering this mode</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settingsTTS" ${settings.ttsEnabled ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <h4 style="font-size: 13px; color: #a3a3a3; margin-bottom: 8px;">Custom Commands</h4>
+          <div class="setting-group" style="overflow: hidden;">
+            <div id="customCommandsList">
+              ${Object.entries(settings.customCommands || {}).map(([phrase, action], i) => `
+                <div class="custom-command-wrapper">
+                  <div class="custom-command-delete-bg">Delete</div>
+                  <div class="setting-row custom-command-row" data-index="${i}">
+                    <input type="text" class="cmd-phrase" value="${phrase}" placeholder="voice phrase" style="flex: 1; margin-right: 8px;">
+                    <select class="cmd-action" style="flex: 1;">
+                      ${getActionOptions(action)}
+                    </select>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="setting-row" style="justify-content: space-between; gap: 8px;">
+              <button class="btn btn-secondary" id="resetAddonSettings" style="padding: 6px 12px; font-size: 12px;">
+                Reset to Default
+              </button>
+              <button class="btn btn-secondary" id="addCustomCommand" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Command
+              </button>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: #737373; margin-top: 8px;">
+            Swipe left on a command to delete it
+          </div>
+        </div>
+      `;
+
+      // Add event listener for adding commands
+      document.getElementById('addCustomCommand').addEventListener('click', () => {
+        const list = document.getElementById('customCommandsList');
+        const index = list.children.length;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-command-wrapper';
+        wrapper.innerHTML = `
+          <div class="custom-command-delete-bg">Delete</div>
+          <div class="setting-row custom-command-row" data-index="${index}">
+            <input type="text" class="cmd-phrase" value="" placeholder="voice phrase" style="flex: 1; margin-right: 8px;">
+            <select class="cmd-action" style="flex: 1;">
+              ${getActionOptions()}
+            </select>
+          </div>
+        `;
+        list.appendChild(wrapper);
+        attachSwipeHandler(wrapper);
+        wrapper.querySelector('.cmd-phrase').focus();
+      });
+
+      // Reset addon settings
+      document.getElementById('resetAddonSettings').addEventListener('click', async () => {
+        if (confirm('Reset all settings for this addon to defaults?')) {
+          await ipcRenderer.invoke('save-addon-settings', {
+            name: currentEditingAddon,
+            settings: { commandsOnly: null, pushToTalk: null, ttsEnabled: null, customCommands: {} }
+          });
+          showToast('Settings reset to defaults');
+          addonSettingsModal.classList.remove('show');
+          currentEditingAddon = null;
+        }
+      });
+
+      // Swipe to delete handlers
+      function attachSwipeHandler(wrapper) {
+        const row = wrapper.querySelector('.custom-command-row');
+        const deleteBtn = wrapper.querySelector('.custom-command-delete-bg');
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+
+        // Click on delete button
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => {
+            wrapper.remove();
+          });
+        }
+
+        row.addEventListener('mousedown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+          startX = e.clientX;
+          isDragging = true;
+          row.classList.add('swiping');
+        });
+
+        row.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          currentX = e.clientX - startX;
+          if (currentX < 0) {
+            row.style.transform = `translateX(${Math.max(currentX, -80)}px)`;
+          }
+        });
+
+        row.addEventListener('mouseup', () => {
+          if (!isDragging) return;
+          isDragging = false;
+          row.classList.remove('swiping');
+          if (currentX < -50) {
+            wrapper.remove();
+          } else {
+            row.style.transform = '';
+          }
+          currentX = 0;
+        });
+
+        row.addEventListener('mouseleave', () => {
+          if (isDragging) {
+            isDragging = false;
+            row.classList.remove('swiping');
+            if (currentX < -50) {
+              wrapper.remove();
+            } else {
+              row.style.transform = '';
+            }
+            currentX = 0;
+          }
+        });
+
+        // Touch events for trackpad
+        row.addEventListener('wheel', (e) => {
+          if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && e.deltaX > 30) {
+            wrapper.remove();
+          }
+        }, { passive: true });
+      }
+
+      // Attach swipe handlers to existing rows
+      content.querySelectorAll('.custom-command-wrapper').forEach(attachSwipeHandler);
+
+      addonSettingsModal.classList.add('show');
+    }
+
+    document.getElementById('addonSettingsCancel').addEventListener('click', () => {
+      addonSettingsModal.classList.remove('show');
+      currentEditingAddon = null;
+    });
+
+    document.getElementById('addonSettingsRemove').addEventListener('click', async () => {
+      if (!currentEditingAddon) return;
+
+      if (confirm(`Hide "${currentEditingAddon}" addon from the GUI? The addon files will be kept and can be restored by editing ~/.config/speech2type/addons.json`)) {
+        const result = await ipcRenderer.invoke('remove-addon', currentEditingAddon);
+        addonSettingsModal.classList.remove('show');
+        currentEditingAddon = null;
+
+        if (result.success) {
+          showToast('Addon hidden from GUI');
+          loadAddons();
+        } else {
+          showToast(`Failed to hide: ${result.error}`);
+        }
+      }
+    });
+
+    document.getElementById('addonSettingsSave').addEventListener('click', async () => {
+      if (!currentEditingAddon) return;
+
+      const commandsOnly = document.getElementById('settingsCommandsOnly').checked;
+      const pushToTalk = document.getElementById('settingsPushToTalk').checked;
+      const ttsEnabled = document.getElementById('settingsTTS').checked;
+
+      // Gather custom commands
+      const customCommands = {};
+      document.querySelectorAll('.custom-command-row').forEach(row => {
+        const phrase = row.querySelector('.cmd-phrase').value.trim();
+        const action = row.querySelector('.cmd-action').value.trim();
+        if (phrase && action) {
+          customCommands[phrase] = action;
+        }
+      });
+
+      const result = await ipcRenderer.invoke('save-addon-settings', {
+        name: currentEditingAddon,
+        settings: { commandsOnly, pushToTalk, ttsEnabled, customCommands }
+      });
+
+      addonSettingsModal.classList.remove('show');
+      currentEditingAddon = null;
+
+      if (result.success) {
+        showToast('Settings saved. Changes apply immediately.');
+        // Refresh commands list to show new custom commands
+        loadCommands();
+      } else {
+        showToast(`Failed: ${result.error}`);
+      }
+    });
+
+    addonSettingsModal.addEventListener('click', (e) => {
+      if (e.target === addonSettingsModal) {
+        addonSettingsModal.classList.remove('show');
+        currentEditingAddon = null;
+      }
+    });
+
+    // Hotkey management
+    let currentHotkeys = {};
+    let recordingHotkeyName = null;
+
+    const hotkeyLabels = {
+      toggle: { label: 'Toggle Listening', description: 'Start/stop voice recognition' },
+      toggleTTS: { label: 'Toggle TTS', description: 'Turn text-to-speech on/off' },
+      pushToTalk: { label: 'Push-to-Talk', description: 'Hold to speak, release to submit (modifiers only)' },
+      stopTTS: { label: 'Stop TTS', description: 'Stop current speech playback' },
+    };
+
+    function formatHotkeyDisplay(hotkey) {
+      if (!hotkey || (!hotkey.key && (!hotkey.modifiers || hotkey.modifiers.length === 0))) {
+        return 'Not set';
+      }
+      const mods = hotkey.modifiers || [];
+      let key = hotkey.key || '';
+
+      const modStr = mods.map(m => {
+        if (m === 'cmd') return 'Cmd';
+        if (m === 'alt') return 'Option';
+        if (m === 'ctrl') return 'Ctrl';
+        if (m === 'shift') return 'Shift';
+        return m;
+      }).join('+');
+
+      // Convert keycode to display name
+      let keyDisplay = key;
+      if (key === '39') keyDisplay = "'";
+      else if (key === '49') keyDisplay = 'Space';
+      else if (key === '41') keyDisplay = ';';
+
+      if (!keyDisplay && modStr) return modStr + ' (hold)';
+      return modStr ? `${modStr}+${keyDisplay}` : keyDisplay;
+    }
+
+    async function loadHotkeys() {
+      currentHotkeys = await ipcRenderer.invoke('get-hotkeys');
+      const container = document.getElementById('hotkeysList');
+
+      container.innerHTML = Object.entries(hotkeyLabels).map(([name, info]) => {
+        const hotkey = currentHotkeys[name] || {};
+        return `
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-label">${info.label}</div>
+              <div class="setting-description">${info.description}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="hotkey" id="hotkey-display-${name}">${formatHotkeyDisplay(hotkey)}</span>
+              <button class="btn btn-secondary hotkey-record-btn" data-hotkey="${name}" style="padding: 6px 12px; font-size: 12px;">
+                Record
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add event listeners to record buttons
+      container.querySelectorAll('.hotkey-record-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          startRecordingHotkey(e.target.dataset.hotkey, e.target);
+        });
+      });
+    }
+
+    function startRecordingHotkey(hotkeyName, button) {
+      if (recordingHotkeyName) return;
+
+      recordingHotkeyName = hotkeyName;
+      button.textContent = 'Press keys...';
+      button.classList.add('recording');
+
+      const handleKeydown = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // For pushToTalk, we only need modifiers
+        const isPushToTalk = hotkeyName === 'pushToTalk';
+
+        // Build hotkey object
+        const modifiers = [];
+        if (e.metaKey) modifiers.push('cmd');
+        if (e.ctrlKey) modifiers.push('ctrl');
+        if (e.altKey) modifiers.push('alt');
+        if (e.shiftKey) modifiers.push('shift');
+
+        // Get the key
+        let key = e.key.toLowerCase();
+        const isModifierOnly = ['meta', 'control', 'alt', 'shift'].includes(key);
+
+        if (isPushToTalk) {
+          // For push-to-talk, we want modifiers only
+          if (modifiers.length === 0) return;
+          if (!isModifierOnly) {
+            key = null; // Push-to-talk uses modifiers only
+          } else {
+            return; // Keep waiting for more modifiers or a non-modifier key
+          }
+        } else {
+          // For regular hotkeys, allow single keys OR modifier+key combos
+          // Just ignore modifier-only presses
+          if (isModifierOnly) return;
+        }
+
+        // Get display key name
+        let displayKey = e.key;
+        if (displayKey === ' ') displayKey = 'Space';
+
+        // Update hotkey config
+        currentHotkeys[hotkeyName] = {
+          ...currentHotkeys[hotkeyName],
+          modifiers,
+          key: isPushToTalk ? null : displayKey
+        };
+
+        await ipcRenderer.invoke('save-hotkeys', currentHotkeys);
+
+        // Update display
+        const display = document.getElementById(`hotkey-display-${hotkeyName}`);
+        display.textContent = formatHotkeyDisplay(currentHotkeys[hotkeyName]);
+
+        // Reset button
+        recordingHotkeyName = null;
+        button.textContent = 'Record';
+        button.classList.remove('recording');
+        document.removeEventListener('keydown', handleKeydown, true);
+
+        showToast('Hotkey saved! Restart service to apply.');
+      };
+
+      document.addEventListener('keydown', handleKeydown, true);
+
+      // Cancel after 5 seconds
+      setTimeout(() => {
+        if (recordingHotkeyName === hotkeyName) {
+          recordingHotkeyName = null;
+          button.textContent = 'Record';
+          button.classList.remove('recording');
+          document.removeEventListener('keydown', handleKeydown, true);
+        }
+      }, 5000);
+    }
+
+    // Reset hotkeys to defaults
+    document.getElementById('resetHotkeysBtn').addEventListener('click', async () => {
+      await ipcRenderer.invoke('reset-hotkeys');
+      await loadHotkeys();
+      showToast('Hotkeys reset to defaults. Restart service to apply.');
+    });
+
+    // Listen for state updates from main process
+    ipcRenderer.on('mode-changed', (event, mode) => {
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === mode);
+      });
+    });
+
+    ipcRenderer.on('tts-changed', (event, enabled) => {
+      document.getElementById('ttsToggle').checked = enabled;
+    });
+
+    ipcRenderer.on('listening-changed', (event, listening) => {
+      // Update service status when listening state changes
+      updateServiceStatus(true, listening);  // Service is running if we get this event
+    });
+
+    // Unified state change handler for consistent updates
+    ipcRenderer.on('state-changed', (event, state) => {
+      // Update service status
+      updateServiceStatus(state.isServiceRunning, state.isListening);
+
+      // Update mode selector
+      document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.mode === state.currentMode);
+      });
+
+      // Update TTS toggle
+      document.getElementById('ttsToggle').checked = state.ttsEnabled;
+    });
+
+    // Command sections data - comprehensive list of all commands
+    const builtInCommands = {
+      'Core Commands': {
+        editable: false,
+        commands: [
+          { phrase: 'affirmative', action: 'Press Enter / Submit' },
+          { phrase: 'retract', action: 'Undo last typed text' },
+          { phrase: 'new line', action: 'Insert line break' },
+          { phrase: 'escape', action: 'Press Escape key' },
+          { phrase: 'silence', action: 'Stop TTS playback' },
+        ]
+      },
+      'Mode Switching': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'general mode', action: 'Switch to General mode' },
+          { phrase: 'music mode', action: 'Switch to Ableton mode' },
+          { phrase: 'ableton mode', action: 'Switch to Ableton mode' },
+          { phrase: 'power mode', action: 'Switch to Claude mode' },
+          { phrase: 'claude mode', action: 'Switch to Claude mode' },
+        ]
+      },
+      'Text-to-Speech': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'speech on', action: 'Enable TTS' },
+          { phrase: 'speech off', action: 'Disable TTS' },
+          { phrase: 'text to speech on', action: 'Enable TTS' },
+          { phrase: 'text to speech off', action: 'Disable TTS' },
+          { phrase: 'stop', action: 'Stop TTS playback' },
+        ]
+      },
+      'Text Editing': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'scratch', action: 'Clear all typed text' },
+          { phrase: 'scratch all', action: 'Clear all typed text' },
+          { phrase: 'scratch that', action: 'Clear all typed text' },
+          { phrase: 'undo', action: 'Undo (⌘Z)' },
+          { phrase: 'redo', action: 'Redo (⌘⇧Z)' },
+          { phrase: 'select all', action: 'Select All (⌘A)' },
+          { phrase: 'delete', action: 'Delete selection' },
+        ]
+      },
+      'Clipboard': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'copy', action: 'Copy (⌘C)' },
+          { phrase: 'paste', action: 'Paste (⌘V)' },
+          { phrase: 'cut', action: 'Cut (⌘X)' },
+        ]
+      },
+      'File Operations': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'save', action: 'Save (⌘S)' },
+          { phrase: 'find', action: 'Find (⌘F)' },
+          { phrase: 'new tab', action: 'New tab (⌘T)' },
+          { phrase: 'close tab', action: 'Close tab (⌘W)' },
+          { phrase: 'new window', action: 'New window (⌘N)' },
+        ]
+      },
+      'Navigation': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'tab', action: 'Next field (Tab)' },
+          { phrase: 'back tab', action: 'Previous field (⇧Tab)' },
+          { phrase: 'up', action: 'Arrow up' },
+          { phrase: 'down', action: 'Arrow down' },
+          { phrase: 'left', action: 'Arrow left' },
+          { phrase: 'right', action: 'Arrow right' },
+          { phrase: 'page up', action: 'Page up' },
+          { phrase: 'page down', action: 'Page down' },
+          { phrase: 'home', action: 'Go to start' },
+          { phrase: 'end', action: 'Go to end' },
+        ]
+      },
+      'Window Management': {
+        editable: false,
+        prefix: 'computer',
+        commands: [
+          { phrase: 'close', action: 'Close window (⌘W)' },
+          { phrase: 'quit', action: 'Quit app (⌘Q)' },
+          { phrase: 'minimize', action: 'Minimize (⌘M)' },
+          { phrase: 'hide', action: 'Hide app (⌘H)' },
+          { phrase: 'switch', action: 'Switch app (⌘Tab)' },
+          { phrase: 'stop listening', action: 'Stop voice recognition' },
+        ]
+      },
+      'App Switching (focus/switch to/go to/open)': {
+        editable: false,
+        commands: [
+          { phrase: 'focus terminal', action: 'Switch to Terminal' },
+          { phrase: 'focus chrome / browser / google', action: 'Switch to Chrome' },
+          { phrase: 'focus safari', action: 'Switch to Safari' },
+          { phrase: 'focus finder / files', action: 'Switch to Finder' },
+          { phrase: 'focus code / vs code / vscode', action: 'Switch to VS Code' },
+          { phrase: 'focus cursor', action: 'Switch to Cursor' },
+          { phrase: 'focus slack', action: 'Switch to Slack' },
+          { phrase: 'focus discord', action: 'Switch to Discord' },
+          { phrase: 'focus spotify / music', action: 'Switch to Spotify' },
+          { phrase: 'focus notes', action: 'Switch to Notes' },
+          { phrase: 'focus messages', action: 'Switch to Messages' },
+          { phrase: 'focus mail / email', action: 'Switch to Mail' },
+          { phrase: 'focus preview', action: 'Switch to Preview' },
+          { phrase: 'focus settings / preferences', action: 'Switch to System Settings' },
+        ]
+      },
+      'Terminal Windows': {
+        editable: false,
+        commands: [
+          { phrase: 'terminal 1/2/3...', action: 'Switch to Terminal window by number' },
+          { phrase: 'window 1/2/3...', action: 'Switch to Terminal window by number' },
+          { phrase: 'terminal [name]', action: 'Switch to Terminal with name in title' },
+          { phrase: 'window with [name]', action: 'Switch to Terminal with name in title' },
+        ]
+      },
+    };
+
+    async function loadCommands() {
+      const container = document.getElementById('commandsContainer');
+      const addons = await ipcRenderer.invoke('get-addons');
+
+      let html = '';
+
+      // Built-in command sections - only Core Commands expanded by default
+      for (const [sectionName, section] of Object.entries(builtInCommands)) {
+        const collapsed = sectionName !== 'Core Commands';
+        html += renderCommandSection(sectionName, section, null, collapsed);
+      }
+
+      // Addon command sections (all collapsed by default)
+      for (const addon of addons) {
+        if (!addon.enabled) continue;
+
+        // Fetch addon commands from backend
+        const addonCommands = await ipcRenderer.invoke('get-addon-commands', addon.name);
+        const builtIn = addonCommands.builtIn || {};
+        const custom = addonCommands.custom || {};
+        const allCommands = { ...builtIn, ...custom };
+
+        if (Object.keys(allCommands).length > 0) {
+          const commands = Object.entries(allCommands).map(([phrase, action]) => ({
+            phrase,
+            action: typeof action === 'string' ? action : action.description || action,
+            isCustom: custom.hasOwnProperty(phrase)
+          }));
+
+          const section = {
+            editable: true,
+            addonName: addon.name,
+            prefix: 'computer',
+            commands
+          };
+          html += renderCommandSection(`${addon.displayName || addon.name}`, section, addon.name, true);
+        }
+      }
+
+      container.innerHTML = html;
+
+      // Attach collapse handlers
+      container.querySelectorAll('.command-section-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          // Don't collapse if clicking on a button
+          if (e.target.closest('button')) return;
+          const section = header.closest('.command-section');
+          section.classList.toggle('collapsed');
+        });
+      });
+
+      // Attach edit button handlers
+      container.querySelectorAll('.edit-section-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const addonName = btn.dataset.addon;
+          if (addonName) {
+            openAddonSettings(addonName);
+          }
+        });
+      });
+    }
+
+    function renderCommandSection(name, section, addonName, collapsed = false) {
+      const commandCount = section.commands.length;
+      const prefix = section.prefix ? `${section.prefix} ` : '';
+      const collapsedClass = collapsed ? ' collapsed' : '';
+
+      const editButton = section.editable && addonName ?
+        `<button class="btn btn-secondary edit-section-btn" data-addon="${addonName}" style="padding: 3px 8px; font-size: 10px;">Edit</button>` : '';
+
+      const commandsHtml = section.commands.map(cmd => `
+        <div class="command-item${cmd.isCustom ? ' custom-command' : ''}">
+          <span class="command-phrase">${prefix}${cmd.phrase}${cmd.isCustom ? ' <span style="color: #4ade80; font-size: 9px; opacity: 0.7;">★</span>' : ''}</span>
+          <span class="command-action">${cmd.action}</span>
+        </div>
+      `).join('');
+
+      return `
+        <div class="command-section${collapsedClass}">
+          <div class="command-section-header">
+            <div class="command-section-title">
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <span>${name}</span>
+              <span class="command-count">${commandCount}</span>
+            </div>
+            <div class="command-section-actions">
+              ${editButton}
+            </div>
+          </div>
+          <div class="command-section-content">
+            <div class="command-section-content-inner">
+              ${commandsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Initial load
+    loadState();
+    loadAddons();
+    loadHotkeys();
+    loadCommands();
+  </script>
+</body>
+</html>
