@@ -545,7 +545,7 @@ If Speech2Type helps your workflow, consider:
 
 ---
 
-**Speech2Type** - If you can type there, you can speak there.
+**Speech2Type Enhanced** - If you can speak there, you can command there.
 
 Official website: [https://speech2type.com](https://speech2type.com)
 

@@ -2,6 +2,43 @@
 
 All notable changes to Speech2Type Enhanced will be documented in this file.
 
+## [0.6.0] - 2025-12-07
+
+### Added
+
+#### Expanded Audio Settings
+- **8 Configurable Sound Events**:
+  - Listening: Start, Stop, Typing feedback
+  - Commands: Command recognized, Error, Mode switch
+  - TTS: TTS Started, TTS Stopped
+- **Sound Selection**: Dropdown with 14 system presets per event
+- **Custom Sound Files**: Browse and select your own audio files
+- **Test Buttons**: Preview each sound at current volume
+
+#### Menu Bar Icons
+- **Unified 3-bar design**: All modes use consistent waveform bars
+- **Hi-res rendering**: 32x32 pixels with 2x retina scale factor
+- **Mode-specific animations**:
+  - General: Smooth flowing wave (green)
+  - Claude: Seesaw/orbit effect (orange)
+  - Music: Energetic bounce (blue)
+- **Mode change debounce**: Prevents icon flickering on mode switch
+
+#### About Dialog
+- Version information
+- Feature summary
+- Link to GitHub repository
+
+### Fixed
+- **Icon flickering**: Added 1-second debounce after GUI mode changes
+- **Ctrl tap disabled**: No longer triggers in General/Claude modes (addon only)
+
+### Documentation
+- Added `docs/menu-bar-icons.md` - Icon system and animation guide
+- Updated `docs/audio-settings.md` - Complete audio configuration guide
+
+---
+
 ## [0.5.0] - 2025-12-06
 
 ### Added
@@ -121,7 +158,7 @@ See git history for earlier changes.
 2. **Local speech recognition option**: Whisper integration for offline use
 3. **Multi-language switching**: Quick switch between languages via voice command
 4. **Customizable wake word**: Replace "computer" with custom trigger word
-5. **Audio feedback**: Optional beep/sound when listening starts/stops
+5. ~~**Audio feedback**: Optional beep/sound when listening starts/stops~~ ✅ Done in 0.5.0
 
 ### Medium Priority
 6. **Auto-launch apps on mode switch**: Start Ableton when entering Music mode, Claude when entering Claude mode
@@ -129,20 +166,32 @@ See git history for earlier changes.
 8. **Command history**: View and repeat recent voice commands
 9. **Dictation shortcuts**: "insert email" -> your@email.com
 10. **Voice macros**: Record and playback sequences of commands
+11. **Editable command phrases**: Customize trigger phrases in GUI
 
 ### Nice to Have
-11. **iOS/watchOS companion**: Start/stop listening from phone or watch
-12. **Transcription log**: Save all transcribed text to file
-13. **Training mode**: Improve recognition for your voice
-14. **Multiple voices for TTS**: Choose different Piper voices
-15. **Streaming TTS**: Start speaking before full response is ready
+12. **iOS/watchOS companion**: Start/stop listening from phone or watch
+13. **Transcription log**: Save all transcribed text to file
+14. **Training mode**: Improve recognition for your voice
+15. **Multiple voices for TTS**: Choose different Piper voices
+16. **Streaming TTS**: Start speaking before full response is ready
+17. **Keyboard shortcut editor**: Visual hotkey configuration in settings
+18. **Sound pack themes**: Bundled sound themes (minimal, retro, sci-fi)
 
 ### Technical Improvements
-16. **Reduce memory footprint**: Optimize Electron bundle size
-17. **Better error recovery**: Auto-reconnect on network issues
-18. **Metrics dashboard**: Track usage, API costs, recognition accuracy
-19. **Plugin API**: Allow third-party addon marketplace
-20. **Cross-platform**: Windows and Linux support
+19. **Reduce memory footprint**: Optimize Electron bundle size
+20. **Better error recovery**: Auto-reconnect on network issues
+21. **Metrics dashboard**: Track usage, API costs, recognition accuracy
+22. **Plugin API**: Allow third-party addon marketplace
+23. **Cross-platform**: Windows and Linux support
+24. **Auto-updater**: Check for and install updates from GitHub releases
+
+### Recently Completed
+- ✅ Expanded audio settings with 8 sound events (0.6.0)
+- ✅ Hi-res menu bar icons with mode-specific animations (0.6.0)
+- ✅ About dialog (0.6.0)
+- ✅ Audio settings modal with custom sounds (0.5.0)
+- ✅ GUI settings window (0.4.0)
+- ✅ Addon system with hot-reload (0.4.0)
 
 ---
 

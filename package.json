@@ -1,6 +1,6 @@
 {
   "name": "speech2type-enhanced",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "description": "Voice typing CLI for Mac with voice commands (affirmative, retract, silence) and Claude Code TTS integration.",
   "author": "jessesep",
   "license": "MIT",

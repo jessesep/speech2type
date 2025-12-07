@@ -1214,6 +1214,10 @@ function buildContextMenu() {
     },
     { type: 'separator' },
     {
+      label: 'About Speech2Type',
+      click: showAbout
+    },
+    {
       label: 'Quit',
       click: () => {
         stopS2T();
@@ -1405,6 +1409,49 @@ function openSettings() {
 
   settingsWindow.on('closed', () => {
     settingsWindow = null;
+  });
+}
+
+/**
+ * Show About dialog
+ */
+function showAbout() {
+  const { dialog } = require('electron');
+
+  // Read version from package.json
+  let version = '0.5.0';
+  try {
+    const packagePath = path.join(projectRoot, 'package.json');
+    if (fs.existsSync(packagePath)) {
+      const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+      version = pkg.version || version;
+    }
+  } catch (e) {}
+
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'About Speech2Type',
+    message: 'Speech2Type Enhanced',
+    detail: `Version ${version}
+
+Voice typing for Mac with voice commands and Claude Code integration.
+
+• Real-time transcription via Deepgram
+• Voice commands (affirmative, retract, etc.)
+• Multiple modes (General, Music, Claude)
+• Text-to-speech with Piper TTS
+• Configurable audio feedback
+
+Created by jessesep
+https://github.com/jessesep/speech2type
+
+Licensed under MIT`,
+    buttons: ['OK', 'Visit GitHub'],
+    defaultId: 0
+  }).then(result => {
+    if (result.response === 1) {
+      shell.openExternal('https://github.com/jessesep/speech2type');
+    }
   });
 }
 
