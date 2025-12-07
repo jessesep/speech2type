@@ -2,7 +2,23 @@
 
 > **Voice typing from your terminal with voice commands.**
 
-A CLI tool for fast voice typing in every Mac app. Includes voice commands like "affirmative" (Enter), "retract" (undo), and Claude Code integration for automatic text-to-speech responses.
+An extensively reworked fork of [Speech2Type](https://github.com/nicobrenner/speech2type) with a full GUI, voice commands, multi-mode support, and Claude Code integration.
+
+### What's New in Enhanced
+
+| Feature | Description |
+|---------|-------------|
+| **🖥️ Menu Bar GUI** | Full Electron app with settings, status indicators, and animated icons |
+| **🎤 Voice Commands** | 30+ commands: "affirmative", "retract", "focus chrome", etc. |
+| **🎛️ Multiple Modes** | General, Claude (auto-pause/resume), Music (Ableton control) |
+| **🔊 Audio Feedback** | Configurable sounds for start/stop, commands, errors, mode switch |
+| **🗣️ Claude TTS** | Auto-read Claude Code responses with Piper neural TTS |
+| **🎹 Addon System** | Create custom modes with hot-reload support |
+| **⌨️ Hotkeys** | Cmd+; toggle, push-to-talk, spacebar stop TTS |
+
+See [CHANGELOG.md](CHANGELOG.md) for full release history.
+
+---
 
 ## Installation
 
