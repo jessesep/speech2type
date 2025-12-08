@@ -1310,11 +1310,16 @@ async function startApplication(config, options = {}) {
           const newMode = command.split(':')[1];
           if (newMode === 'general') {
             currentMode = 'general';
+            stopClaudeModeWatcher();
+            if (addonLoader) addonLoader.deactivate();
             console.log(chalk.cyan('[mode] Switched to general mode'));
           } else if (newMode === 'claude') {
             currentMode = 'claude';
+            if (addonLoader) addonLoader.deactivate();
+            startClaudeModeWatcher(currentConfig);
             console.log(chalk.cyan('[mode] Switched to claude/power mode'));
           } else if (newMode === 'music' && addonLoader) {
+            stopClaudeModeWatcher();
             currentMode = 'addon';
             addonLoader.activate('ableton');
             console.log(chalk.cyan('[mode] Switched to music/addon mode'));
