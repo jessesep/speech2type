@@ -41,6 +41,11 @@ const PRE_SPEAK_DELAY = 150;
 const TTS_LOCK_FILE = '/tmp/claude-tts-speaking';
 
 /**
+ * Max speech duration (10 seconds) - prevents zombie processes
+ */
+const MAX_SPEECH_MS = 10000;
+
+/**
  * Training voice service
  */
 export class TrainingVoice {
@@ -106,21 +111,28 @@ export class TrainingVoice {
       // Use TTS lock to prevent mic pickup
       const command = `touch ${TTS_LOCK_FILE} && say -v ${voice} -r ${rate} "${text}" && rm -f ${TTS_LOCK_FILE}`;
 
-      // Run async (don't wait for completion if interrupted)
+      // Run with timeout to prevent zombie processes
       const promise = execAsync(command);
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Speech timeout')), MAX_SPEECH_MS)
+      );
 
       // Allow interruption
       const checkInterruption = setInterval(() => {
         if (this.interrupted) {
-          // Kill the say process
           exec('killall say', () => {});
           exec(`rm -f ${TTS_LOCK_FILE}`, () => {});
           clearInterval(checkInterruption);
         }
       }, 100);
 
-      await promise;
-      clearInterval(checkInterruption);
+      try {
+        await Promise.race([promise, timeout]);
+      } finally {
+        clearInterval(checkInterruption);
+        // Always cleanup lock file
+        exec(`rm -f ${TTS_LOCK_FILE}`, () => {});
+      }
 
     } catch (e) {
       if (!this.interrupted) {

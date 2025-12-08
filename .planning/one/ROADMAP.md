@@ -202,21 +202,21 @@
 **Spec:** `.planning/one/TRAINING-UX.md`
 **Status:** Completed by builder (2025-12-08)
 
-### Milestone: ONE v0.8.0 Release (🟢 NEAR COMPLETE)
+### Milestone: ONE v0.8.0 Release (🟢 NEAR COMPLETE - 75%)
 
 **Completed (2025-12-08):**
 - ✅ 2.1 Learning Loop Integration
 - ✅ 2.2 Training Mode State Machine
 - ✅ 2.3 Training Commands
 - ✅ 2.4 Training Voice/Audio Feedback
-- ✅ 2.5 Correction Flow
+- ✅ 2.5 Correction Flow (with IntentResolver integration)
+- ✅ 2.8 Visual Feedback (Menu Bar with purple training mode)
 
 **Remaining:**
 - ⏳ 2.6 Workflow Creation (optional - can defer to v0.8.1)
 - ⏳ 2.7 Conflict Resolution
-- ⏳ 2.8 Visual Feedback (Menu Bar)
 
-**Status:** Phase 2 is 62.5% complete (5/8 tasks done). Core training and correction flows are fully working. Remaining tasks are polish and advanced features.
+**Status:** Phase 2 is 75% complete (6/8 tasks done). Core training, correction flows, and visual feedback are fully working. Remaining tasks (2.6 workflows and 2.7 conflict resolution) are advanced features that can be deferred.
 
 ---
 
@@ -485,5 +485,5 @@
 
 ---
 
-*Last updated: 2025-12-08 23:59 UTC by thinker*
-*Phase 2.1-2.5 marked complete - correction flow now working!*
+*Last updated: 2025-12-09 00:11 UTC by thinker*
+*Phase 2 now 75% complete (6/8 tasks) - 2.1-2.5 and 2.8 done! Only 2.6 and 2.7 remaining.*
