@@ -52,6 +52,7 @@ export class TrainingVoice {
   constructor() {
     this.speaking = false;
     this.interrupted = false;
+    this.speechQueue = Promise.resolve(); // Ensures only one TTS at a time
   }
 
   /**
@@ -81,6 +82,7 @@ export class TrainingVoice {
 
   /**
    * Speak text with natural delay and TTS lock
+   * Queued to ensure only one TTS runs at a time
    * @param {string} text - Text to speak
    * @param {object} options - Options
    * @param {string} options.voice - Voice to use (default: Samantha)
@@ -88,7 +90,16 @@ export class TrainingVoice {
    * @param {number} options.preDelay - Delay before speaking (default: 150ms)
    * @returns {Promise<void>}
    */
-  async speak(text, options = {}) {
+  speak(text, options = {}) {
+    // Queue speech to prevent multiple simultaneous TTS
+    this.speechQueue = this.speechQueue.then(() => this._doSpeak(text, options)).catch(() => {});
+    return this.speechQueue;
+  }
+
+  async _doSpeak(text, options = {}) {
+    // Kill any existing say process first
+    exec('killall say 2>/dev/null', () => {});
+
     const voice = options.voice || 'Samantha';
     const rate = options.rate || 180;
     const preDelay = options.preDelay !== undefined ? options.preDelay : PRE_SPEAK_DELAY;
@@ -130,7 +141,6 @@ export class TrainingVoice {
         await Promise.race([promise, timeout]);
       } finally {
         clearInterval(checkInterruption);
-        // Always cleanup lock file
         exec(`rm -f ${TTS_LOCK_FILE}`, () => {});
       }
 
