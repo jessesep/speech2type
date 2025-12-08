@@ -389,6 +389,19 @@ async function initializeIntentResolver() {
     onStateChange: (newState, oldState) => {
       // Optional: track state changes for debugging
       console.log(chalk.dim(`[learning] State: ${oldState} -> ${newState}`));
+    },
+    onResolve: async (text) => {
+      // Resolve text to an action using intent resolver
+      if (!intentResolver) {
+        return { action: 'none', confidence: 0 };
+      }
+      try {
+        const result = await intentResolver.resolveWithDictionary(text);
+        return result;
+      } catch (err) {
+        console.error(chalk.dim(`[learning] Resolution error: ${err.message}`));
+        return { action: 'none', confidence: 0 };
+      }
     }
   });
 

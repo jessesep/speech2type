@@ -42,6 +42,8 @@ let smartModeEnabled = false;
 let aiEnabled = false;
 let aiMode = null;
 let isTraining = false;  // Training mode state (Phase 2.8)
+let trainingFlash = null;  // Training flash state: 'success' or 'error'
+let trainingDetails = null; // Training details for tooltip { phrase, action }
 
 // Animation state
 let animationInterval = null;
@@ -127,7 +129,9 @@ function createTrayIcon(state, frame = 0) {
     error: [230, 100, 100, 255],      // Soft red
     disabled: [120, 120, 120, 255],   // Gray
     idle: [0, 0, 0, 255],             // Black (template)
-    training: [180, 100, 220, 255]    // Purple/magenta for training mode (Phase 2.8)
+    training: [180, 100, 220, 255],   // Purple/magenta for training mode (Phase 2.8)
+    training_success: [90, 220, 130, 255],  // Bright green flash for successful training
+    training_error: [255, 100, 100, 255]    // Bright red flash for training error
   };
 
   // Mode-specific colors when listening
@@ -547,9 +551,19 @@ function updateTrayIcon() {
     state = 'disabled';
     tooltip = 'Speech2Type - Service stopped';
     stopAnimation();
+  } else if (trainingFlash) {
+    // Flash states override training state
+    state = `training_${trainingFlash}`;
+    tooltip = trainingFlash === 'success' ? 'ONE - Saved!' : 'ONE - Error';
+    stopAnimation();
   } else if (isTraining) {
     state = 'training';
-    tooltip = 'ONE - Training Mode';
+    // Detailed tooltip if we have training details
+    if (trainingDetails && trainingDetails.phrase && trainingDetails.action) {
+      tooltip = `ONE - Training Mode\nTeaching: "${trainingDetails.phrase}" → ${trainingDetails.action}\nSay a variation or "done" to finish`;
+    } else {
+      tooltip = 'ONE - Training Mode';
+    }
     startAnimation();
   } else if (isSpeaking) {
     state = 'speaking';
@@ -1791,6 +1805,23 @@ ipcMain.on('set-training', (event, enabled) => {
       settingsWindow.webContents.send('state-changed', { isTraining });
     }
   }
+});
+ipcMain.on('training-flash', (event, flashType) => {
+  // flashType: 'success' or 'error'
+  console.log('Received training-flash:', flashType);
+  trainingFlash = flashType;
+  updateTrayIcon();
+  // Clear flash after 800ms
+  setTimeout(() => {
+    trainingFlash = null;
+    updateTrayIcon();
+  }, 800);
+});
+ipcMain.on('training-details', (event, details) => {
+  // details: { phrase, action }
+  console.log('Received training-details:', details);
+  trainingDetails = details;
+  updateTrayIcon();
 });
 ipcMain.on('start-service', () => startS2T());
 ipcMain.on('stop-service', () => stopS2T());

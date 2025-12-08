@@ -92,15 +92,17 @@ export class LearningLoop {
     this.onSpeak = null;           // Function to speak text
     this.onExecute = null;         // Function to execute action
     this.onStateChange = null;     // Function called on state change
+    this.onResolve = null;         // Function to resolve text to action (intentResolver)
   }
 
   /**
    * Set callbacks for integration
    */
-  setCallbacks({ onSpeak, onExecute, onStateChange }) {
+  setCallbacks({ onSpeak, onExecute, onStateChange, onResolve }) {
     this.onSpeak = onSpeak;
     this.onExecute = onExecute;
     this.onStateChange = onStateChange;
+    this.onResolve = onResolve;
   }
 
   /**
@@ -310,13 +312,27 @@ export class LearningLoop {
     await this.recordImplicitNegative(phrase, action);
 
     if (correction.intendedPhrase) {
-      // User told us what they meant - try to resolve it
+      // User told us what they meant - try to resolve it to an action
       contextWindow.addCorrection(phrase, action, correction.intendedPhrase);
 
-      // TODO: Resolve the intended phrase to an action
-      // For now, just record and speak
+      if (this.onResolve) {
+        try {
+          // Resolve the intended phrase to an action
+          const resolved = await this.onResolve(correction.intendedPhrase);
+
+          if (resolved && resolved.action && resolved.action !== 'none') {
+            // Successfully resolved - update mappings and confirm
+            await this.applyCorrection(phrase, action, resolved.action, resolved.confidence);
+            return { isCorrection: true, handled: true };
+          }
+        } catch (err) {
+          console.error('[LearningLoop] Error resolving intended phrase:', err);
+        }
+      }
+
+      // Couldn't resolve automatically - ask user to specify action
       if (this.onSpeak) {
-        await this.onSpeak(`Got it. What action should "${phrase}" perform?`);
+        await this.onSpeak(`What action should "${phrase}" perform?`);
       }
       this.setState(LearningState.AWAITING_CORRECTION);
       return { isCorrection: true, handled: true };
@@ -410,17 +426,77 @@ export class LearningLoop {
 
     const { phrase, action: wrongAction } = this.correctionContext;
 
-    // TODO: Resolve the response to an action
-    // For now, just log and reset
-    console.log(`[LearningLoop] Correction: "${phrase}" was ${wrongAction}, user said "${response}"`);
+    // Try to resolve the response to an action
+    if (this.onResolve) {
+      try {
+        const resolved = await this.onResolve(response);
+
+        if (resolved && resolved.action && resolved.action !== 'none') {
+          // Successfully resolved - apply the correction
+          await this.applyCorrection(phrase, wrongAction, resolved.action, resolved.confidence);
+          return { isCorrection: true, handled: true };
+        }
+      } catch (err) {
+        console.error('[LearningLoop] Error resolving correction details:', err);
+      }
+    }
+
+    // Couldn't resolve - just log and reset
+    console.log(`[LearningLoop] Correction: "${phrase}" was ${wrongAction}, user said "${response}" (could not resolve)`);
 
     if (this.onSpeak) {
-      await this.onSpeak(`I'll remember that.`);
+      await this.onSpeak("I'm not sure what action that is. Try again or use training mode.");
     }
 
     this.setState(LearningState.IDLE);
     this.correctionContext = null;
     return { isCorrection: true, handled: true };
+  }
+
+  /**
+   * Apply a correction: update wrong mapping, add right mapping, confirm
+   * @param {string} phrase - Original phrase
+   * @param {string} wrongAction - Action that was wrong
+   * @param {string} rightAction - Action that's correct
+   * @param {number} confidence - Confidence for the correct mapping
+   */
+  async applyCorrection(phrase, wrongAction, rightAction, confidence) {
+    // Decrease confidence on wrong mapping
+    const wrongCmd = commandDictionary.data.commands.find(c => c.action === wrongAction);
+    if (wrongCmd) {
+      wrongCmd.confidence = Math.max(
+        THRESHOLDS.REMOVE_LEARNED,
+        wrongCmd.confidence + CONFIDENCE_ADJUSTMENTS.CORRECTION_WRONG
+      );
+
+      // Remove phrase from wrong action if confidence too low
+      if (wrongCmd.confidence < 0.4) {
+        const phraseIndex = wrongCmd.phrases?.indexOf(phrase);
+        if (phraseIndex !== undefined && phraseIndex >= 0) {
+          wrongCmd.phrases.splice(phraseIndex, 1);
+          console.log(`[LearningLoop] Removed "${phrase}" from ${wrongAction} (conf too low)`);
+        }
+      }
+
+      await commandDictionary.save();
+    }
+
+    // Add to correct action with 'corrected' source
+    await commandDictionary.learn(phrase, rightAction, 'corrected');
+
+    // Update context
+    contextWindow.addCorrection(phrase, wrongAction, rightAction);
+
+    // Speak confirmation
+    if (this.onSpeak) {
+      await this.onSpeak(`Got it. "${phrase}" now means ${rightAction}.`);
+    }
+
+    // Reset state
+    this.setState(LearningState.IDLE);
+    this.correctionContext = null;
+
+    console.log(`[LearningLoop] Correction applied: "${phrase}" ${wrongAction} -> ${rightAction}`);
   }
 
   /**
