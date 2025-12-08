@@ -6,12 +6,19 @@
  *   1. Direct API (requires ANTHROPIC_API_KEY) - faster, billed separately
  *   2. Claude CLI (uses your Claude Code login) - uses existing auth
  *
+ * Now integrates with CommandDictionary for tiered resolution:
+ *   - Tier 1: Exact match from personal dictionary (instant, no API)
+ *   - Tier 2: Fuzzy match from personal dictionary (instant, no API)
+ *   - Tier 3: Claude AI fallback (API call, learns new phrases)
+ *
  * Cost with API: ~$0.00005 per call (Haiku pricing)
  * Cost with CLI: Uses your Claude Code subscription/credits
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { spawn } from 'child_process';
+import { getAnthropicKey } from './secrets.js';
+import { commandDictionary } from './commands.js';
 
 // Core actions the system can perform
 const CORE_ACTIONS = {
@@ -256,6 +263,38 @@ class IntentResolver {
     }
     this.cache.set(key, value);
   }
+
+  /**
+   * Tiered resolution: Dictionary first, then AI fallback
+   * This is the preferred method for resolving speech to actions.
+   * @param {string} speech - The transcribed user speech
+   * @param {object} context - Optional context (app name, mode, etc.)
+   * @returns {Promise<{action: string, confidence: number, tier: number, target?: string}>}
+   */
+  async resolveWithDictionary(speech, context = {}) {
+    // TIER 1 + 2: Check personal dictionary first (instant, no API call)
+    const localMatch = commandDictionary.lookup(speech);
+    if (localMatch && localMatch.confidence > 0.7) {
+      return {
+        ...localMatch,
+        latencyMs: 0,
+        mode: this.mode
+      };
+    }
+
+    // TIER 3: Fall back to Claude AI
+    const aiResult = await this.resolve(speech, context);
+
+    // Learn if AI is confident about an action
+    if (aiResult.confidence > 0.8 && aiResult.action && aiResult.action !== 'none' && aiResult.action !== 'unknown') {
+      await commandDictionary.learn(speech, aiResult.action, 'learned');
+    }
+
+    // Record tier 3 hit for stats
+    commandDictionary.recordTier3Hit();
+
+    return { ...aiResult, tier: 3 };
+  }
 }
 
 /**
@@ -435,10 +474,42 @@ class IntentResolverCLI {
     }
     this.cache.set(key, value);
   }
+
+  /**
+   * Tiered resolution: Dictionary first, then AI fallback
+   * This is the preferred method for resolving speech to actions.
+   * @param {string} speech - The transcribed user speech
+   * @param {object} context - Optional context (app name, mode, etc.)
+   * @returns {Promise<{action: string, confidence: number, tier: number, target?: string}>}
+   */
+  async resolveWithDictionary(speech, context = {}) {
+    // TIER 1 + 2: Check personal dictionary first (instant, no API call)
+    const localMatch = commandDictionary.lookup(speech);
+    if (localMatch && localMatch.confidence > 0.7) {
+      return {
+        ...localMatch,
+        latencyMs: 0,
+        mode: this.mode
+      };
+    }
+
+    // TIER 3: Fall back to Claude AI
+    const aiResult = await this.resolve(speech, context);
+
+    // Learn if AI is confident about an action
+    if (aiResult.confidence > 0.8 && aiResult.action && aiResult.action !== 'none' && aiResult.action !== 'unknown') {
+      await commandDictionary.learn(speech, aiResult.action, 'learned');
+    }
+
+    // Record tier 3 hit for stats
+    commandDictionary.recordTier3Hit();
+
+    return { ...aiResult, tier: 3 };
+  }
 }
 
 /**
- * Factory function to create the appropriate resolver
+ * Factory function to create the appropriate resolver (sync version)
  * @param {object} options
  * @param {string} options.apiKey - Anthropic API key (optional)
  * @param {string} options.mode - 'api' or 'cli' (default: auto-detect)
@@ -470,12 +541,58 @@ function createIntentResolver(options = {}) {
   return new IntentResolverCLI();
 }
 
+/**
+ * Async factory function that checks Keychain for API key
+ * Preferred method - uses secure storage
+ * @param {object} options
+ * @param {string} options.apiKey - Anthropic API key (optional, overrides keychain)
+ * @param {string} options.mode - 'api' or 'cli' (default: auto-detect)
+ * @returns {Promise<IntentResolver|IntentResolverCLI>}
+ */
+async function createIntentResolverAsync(options = {}) {
+  const { apiKey, mode } = options;
+
+  // Explicit mode selection
+  if (mode === 'cli') {
+    return new IntentResolverCLI();
+  }
+
+  // Try to get API key: passed option > env var > keychain
+  let key = apiKey || process.env.ANTHROPIC_API_KEY;
+
+  if (!key) {
+    // Try keychain
+    try {
+      key = await getAnthropicKey();
+    } catch (e) {
+      console.warn('[intent-resolver] Could not access keychain:', e.message);
+    }
+  }
+
+  if (mode === 'api') {
+    if (!key) {
+      throw new Error('API mode requires Anthropic API key (set via keychain, env var, or apiKey option)');
+    }
+    return new IntentResolver(key);
+  }
+
+  // Auto-detect: prefer API if key available, otherwise CLI
+  if (key) {
+    return new IntentResolver(key);
+  }
+
+  // Fall back to CLI
+  return new IntentResolverCLI();
+}
+
 // Export everything
 export {
   IntentResolver,
   IntentResolverCLI,
   createIntentResolver,
-  CORE_ACTIONS
+  createIntentResolverAsync,
+  CORE_ACTIONS,
+  commandDictionary
 };
 
 export default createIntentResolver;

@@ -8,9 +8,18 @@ import { PermissionService } from './services/permission.js';
 import { TranscriberService } from './services/transcriber.js';
 import { TyperService } from './services/typer.js';
 import { AddonLoader } from './services/addon-loader.js';
+import { createIntentResolverAsync, commandDictionary } from './services/intent-resolver.js';
+import { migrateFromConfig, getAnthropicKey } from './services/secrets.js';
+import { learningLoop } from './services/learning-loop.js';
+import { trainingMode } from './services/training-mode.js';
+import defaultCommandsData from './data/default_commands.json' with { type: 'json' };
 
 let sessionActive = false;
 let hotkeyService, transcriberService, typerService, addonLoader;
+
+// AI Intent Resolver for understanding natural speech commands
+let intentResolver = null;
+let aiUnderstandingEnabled = false;
 
 // Buffer for handling commands that come as separate chunks
 let pendingText = '';
@@ -169,7 +178,33 @@ const GENERAL_COMMANDS = {
   'computer coding mode': 'mode_claude',
   'computer claw mode': 'mode_claude',
   'computer cloud mode': 'mode_claude',
+
+  // Training mode (Phase 2.2)
+  'computer learn': 'training_learn',
+  'computer training mode': 'training_learn',
+  'computer teach you': 'training_learn',
+  'computer teach': 'training_learn',
+
+  // Training commands (Phase 2.3)
+  'computer what have i taught you': 'training_list',
+  'computer what did i teach you': 'training_list',
+  'computer list learned': 'training_list',
+  'computer show learned': 'training_list',
 };
+
+// Dynamic patterns for general mode (Phase 2.3)
+const GENERAL_PATTERNS = [
+  {
+    pattern: /^computer\s+forget\s+(.+)$/i,
+    action: 'training_forget',
+    extract: (match) => ({ phrase: match[1] })
+  },
+  {
+    pattern: /^computer\s+what\s+does\s+(.+?)\s+do\??$/i,
+    action: 'training_query',
+    extract: (match) => ({ phrase: match[1] })
+  }
+];
 
 // Get active commands based on current mode
 function getActiveCommands() {
@@ -197,10 +232,13 @@ function getActiveCommands() {
 
 // Get active patterns for current mode
 function getActivePatterns() {
+  const patterns = [...GENERAL_PATTERNS]; // Always include general patterns
+
   if (currentMode === 'addon' && addonLoader) {
-    return addonLoader.getActivePatterns();
+    patterns.push(...addonLoader.getActivePatterns());
   }
-  return [];
+
+  return patterns;
 }
 
 // Claude mode: watch for response completion and resume listening
@@ -286,6 +324,123 @@ function getAudioSettings() {
   }
   return {};
 }
+
+// Get AI understanding settings from config file
+function getAISettings() {
+  try {
+    if (existsSync(AUDIO_CONFIG_FILE)) {
+      const config = JSON.parse(readFileSync(AUDIO_CONFIG_FILE, 'utf8'));
+      return {
+        enabled: config.aiUnderstandingEnabled || false,
+        mode: config.aiUnderstandingMode || 'auto',
+        apiKey: config.anthropicApiKey || null
+      };
+    }
+  } catch (e) {
+    // Ignore errors, use defaults
+  }
+  return { enabled: false, mode: 'auto', apiKey: null };
+}
+
+// Initialize the AI Intent Resolver based on settings (async for keychain access)
+async function initializeIntentResolver() {
+  // Always initialize command dictionary (even if AI is disabled)
+  await commandDictionary.load();
+
+  // Migrate default commands if dictionary is empty
+  if (commandDictionary.isEmpty()) {
+    await commandDictionary.migrateDefaults(defaultCommandsData.commands);
+  }
+
+  const aiSettings = getAISettings();
+  aiUnderstandingEnabled = aiSettings.enabled;
+
+  if (!aiUnderstandingEnabled) {
+    intentResolver = null;
+    return;
+  }
+
+  try {
+    // Use async version that checks keychain for API key
+    intentResolver = await createIntentResolverAsync({
+      mode: aiSettings.mode === 'auto' ? undefined : aiSettings.mode,
+      apiKey: aiSettings.apiKey  // Falls through to keychain if not set
+    });
+    console.log(chalk.cyan(`[ai] Intent resolver initialized (${intentResolver.mode} mode)`));
+  } catch (e) {
+    console.error(chalk.yellow(`[ai] Failed to initialize intent resolver: ${e.message}`));
+    intentResolver = null;
+  }
+
+  // Initialize learning loop callbacks
+  learningLoop.setCallbacks({
+    onSpeak: async (text) => {
+      // Simple TTS using macOS say command
+      exec(`say -v Samantha -r 180 "${text.replace(/"/g, '\\"')}"`, () => {});
+    },
+    onExecute: async (action) => {
+      // Execute an action from the learning loop (e.g., after confirmation)
+      const mappedAction = AI_ACTION_MAP[action];
+      if (mappedAction) {
+        await executeGeneralAction(mappedAction);
+        playBeep();
+      }
+    },
+    onStateChange: (newState, oldState) => {
+      // Optional: track state changes for debugging
+      console.log(chalk.dim(`[learning] State: ${oldState} -> ${newState}`));
+    }
+  });
+
+  // Initialize training mode callbacks
+  trainingMode.setCallbacks({
+    onSpeak: async (text) => {
+      // Use TTS with lock to prevent transcript pickup
+      exec(`touch /tmp/claude-tts-speaking && say -v Samantha -r 180 "${text.replace(/"/g, '\\"')}" && rm -f /tmp/claude-tts-speaking &`, () => {});
+    },
+    onExecute: async (action) => {
+      // Execute an action from training mode
+      const mappedAction = AI_ACTION_MAP[action];
+      if (mappedAction) {
+        await executeGeneralAction(mappedAction);
+        playBeep();
+      }
+    },
+    onStateChange: (newState, oldState) => {
+      console.log(chalk.magenta(`[training] State: ${oldState} -> ${newState}`));
+    }
+  });
+}
+
+// Action mapping from IntentResolver actions to our internal actions
+const AI_ACTION_MAP = {
+  'enter': 'enter',
+  'undo': 'undo',
+  'clear_all': 'clear_all',
+  'copy': 'copy',
+  'paste': 'paste',
+  'cut': 'cut',
+  'select_all': 'select_all',
+  'scroll_up': 'scroll_up',
+  'scroll_down': 'scroll_down',
+  'page_up': 'page_up',
+  'page_down': 'page_down',
+  'new_tab': 'new_tab',
+  'close_tab': 'close_tab',
+  'volume_up': 'volume_up',
+  'volume_down': 'volume_down',
+  'mute': 'mute',
+  'stop_listening': 'stop_listening',
+  'start_listening': 'start_listening',
+  'mode_general': 'mode_general',
+  'mode_claude': 'mode_claude',
+  'mode_music': 'mode_addon_ableton',
+  'tts_on': 'tts_on',
+  'tts_off': 'tts_off',
+  'smart_mode_on': 'smart_commands_on',
+  'smart_mode_off': 'smart_commands_off',
+  'focus_app': 'focus_app'  // Special - needs target
+};
 
 // Get sound file path for an event
 function getSoundFile(eventType) {
@@ -773,6 +928,43 @@ async function executeGeneralAction(action) {
       // Soft welcome voice - use TTS lock to prevent mic pickup
       exec('touch /tmp/claude-tts-speaking && say -v Samantha -r 180 "welcome" && rm -f /tmp/claude-tts-speaking &', () => {});
       return true;
+    case 'training_learn':
+      // Enter training mode
+      await trainingMode.enter();
+      playBeep();
+      return true;
+
+    case 'training_list':
+      // List all learned commands
+      const allCommands = commandDictionary.getAllCommands();
+      const learnedCommands = allCommands.filter(cmd => cmd.source === 'learned');
+
+      if (learnedCommands.length === 0) {
+        console.log(chalk.yellow('[training] You haven\'t taught me anything yet'));
+        exec('say -v Samantha -r 180 "You haven\'t taught me anything yet"', () => {});
+      } else {
+        console.log(chalk.cyan(`[training] You've taught me ${learnedCommands.length} commands:`));
+        learnedCommands.forEach(cmd => {
+          console.log(chalk.dim(`  - ${cmd.phrases.join(', ')} → ${cmd.action}`));
+        });
+
+        // Voice summary
+        const summary = `You've taught me ${learnedCommands.length} custom ${learnedCommands.length === 1 ? 'command' : 'commands'}`;
+        exec(`say -v Samantha -r 180 "${summary}"`, () => {});
+      }
+      playBeep();
+      return true;
+
+    case 'training_forget':
+      // This will be called with params.phrase from pattern match
+      // Handler is in the pattern matching section below
+      return false; // Let it be handled in pattern matching
+
+    case 'training_query':
+      // This will be called with params.phrase from pattern match
+      // Handler is in the pattern matching section below
+      return false; // Let it be handled in pattern matching
+
     default:
       return false;
   }
@@ -821,6 +1013,21 @@ function startSession(config) {
 
     // Log what we received for debugging
     console.log(chalk.dim(`[transcript] "${text}" → clean: "${cleanText}"`));
+
+    // Check if training mode is active and handle speech there
+    if (trainingMode.isActive()) {
+      const handled = await trainingMode.handleSpeech(text);
+      if (handled) {
+        return;
+      }
+    }
+
+    // Check for corrections first (learning loop)
+    const correctionHandled = await learningLoop.handleSpeech(cleanText);
+    if (correctionHandled) {
+      console.log(chalk.yellow(`[learning] Handled as correction/feedback`));
+      return;
+    }
 
     // Check for Terminal window switching by index (e.g., "terminal 1", "window 2")
     const terminalIndexMatch = cleanText.match(TERMINAL_INDEX_PATTERN);
@@ -885,27 +1092,57 @@ function startSession(config) {
       }
     }
 
-    // In addon mode, check dynamic patterns first (tempo 120, scene 1, etc.)
-    if (currentMode === 'addon') {
-      const patterns = getActivePatterns();
-      for (const { pattern, action, extract } of patterns) {
-        const match = cleanText.match(pattern);
-        if (match) {
-          // Clear any pending
-          if (pendingTimeout) {
-            clearTimeout(pendingTimeout);
-            pendingTimeout = null;
-          }
-          if (pendingText) {
-            await typerService.typeText(pendingText + ' ');
-            pendingText = '';
-          }
+    // Check dynamic patterns (general patterns + addon patterns)
+    const patterns = getActivePatterns();
+    for (const { pattern, action, extract } of patterns) {
+      const match = cleanText.match(pattern);
+      if (match) {
+        // Clear any pending
+        if (pendingTimeout) {
+          clearTimeout(pendingTimeout);
+          pendingTimeout = null;
+        }
+        if (pendingText) {
+          await typerService.typeText(pendingText + ' ');
+          pendingText = '';
+        }
 
-          const value = extract(match);
+        const params = extract(match);
+
+        // Handle general training commands
+        if (action === 'training_forget') {
+          const phrase = params.phrase;
+          const success = await commandDictionary.forget(phrase);
+          if (success) {
+            console.log(chalk.green(`[training] Forgot: "${phrase}"`));
+            exec(`say -v Samantha -r 180 "Okay, I've forgotten ${phrase}"`, () => {});
+          } else {
+            console.log(chalk.yellow(`[training] I don't know: "${phrase}"`));
+            exec(`say -v Samantha -r 180 "I don't know that phrase"`, () => {});
+          }
+          playBeep();
+          return;
+        } else if (action === 'training_query') {
+          const phrase = params.phrase;
+          const result = commandDictionary.lookup(phrase);
+          if (result) {
+            console.log(chalk.cyan(`[training] "${phrase}" → ${result.action} (${result.tier === 1 ? 'exact' : 'fuzzy'} match, confidence: ${result.confidence.toFixed(2)})`));
+            const response = `${phrase} does ${result.action}`;
+            exec(`say -v Samantha -r 180 "${response}"`, () => {});
+          } else {
+            console.log(chalk.yellow(`[training] I don't know: "${phrase}"`));
+            exec(`say -v Samantha -r 180 "I don't know what ${phrase} does"`, () => {});
+          }
+          playBeep();
+          return;
+        }
+
+        // Handle addon patterns
+        if (currentMode === 'addon' && addonLoader) {
           const addonMeta = addonLoader.getActiveMetadata();
-          console.log(chalk.magenta(`[${addonMeta?.name || 'addon'}] ${action} → ${JSON.stringify(value)}`));
+          console.log(chalk.magenta(`[${addonMeta?.name || 'addon'}] ${action} → ${JSON.stringify(params)}`));
 
-          const result = addonLoader.executeAction(action, value);
+          const result = addonLoader.executeAction(action, params);
           if (result === true) {
             playBeep();
           } else if (typeof result === 'string') {
@@ -941,6 +1178,10 @@ function startSession(config) {
         } else {
           console.log(chalk.yellow(`[undo] Nothing to undo`));
         }
+
+        // Track undo for learning loop (potential negative feedback)
+        await learningLoop.handleImmediateUndo();
+
         playBeep();
         return;
       }
@@ -1071,6 +1312,77 @@ function startSession(config) {
       }
     }
 
+    // AI Understanding fallback - try to interpret natural speech as commands
+    // Only for short phrases that might be commands (under 8 words)
+    if (intentResolver && aiUnderstandingEnabled && cleanText.split(' ').length <= 7) {
+      // Use heuristic check first (no API call)
+      if (intentResolver.looksLikeCommand(cleanText)) {
+        console.log(chalk.dim(`[ai] Checking: "${cleanText}"...`));
+        try {
+          // Use tiered resolution: Dictionary (Tier 1+2) first, then AI (Tier 3)
+          const result = await intentResolver.resolveWithDictionary(cleanText, {
+            appName: currentMode === 'addon' ? addonLoader?.getActiveMetadata()?.displayName : null
+          });
+
+          // Log tier info for debugging
+          const tierInfo = result.tier ? `tier ${result.tier}` : 'cache';
+
+          // Check if we should ask for confirmation (50-70% confidence)
+          if (result.action !== 'none' && result.action !== 'unknown' &&
+              result.confidence >= 0.5 && result.confidence < 0.7) {
+            console.log(chalk.yellow(`[ai] Low confidence "${cleanText}" → ${result.action} (${Math.round(result.confidence * 100)}%, ${tierInfo})`));
+
+            // Ask user for confirmation via learning loop
+            const actionDescription = AI_ACTION_MAP[result.action] || result.action;
+            await learningLoop.askForConfirmation(cleanText, result.action, result.confidence, actionDescription);
+            return;
+          }
+
+          // Only act on high-confidence results (>= 70%)
+          if (result.action !== 'none' && result.action !== 'unknown' && result.confidence >= 0.7) {
+            const mappedAction = AI_ACTION_MAP[result.action];
+            if (mappedAction) {
+              console.log(chalk.cyan(`[ai] Understood "${cleanText}" → ${result.action} (${Math.round(result.confidence * 100)}%, ${tierInfo}, ${result.latencyMs}ms)`));
+
+              // Clear any pending
+              if (pendingTimeout) {
+                clearTimeout(pendingTimeout);
+                pendingTimeout = null;
+              }
+              if (pendingText) {
+                await typerService.typeText(pendingText + ' ');
+                typedHistory.push((pendingText + ' ').length);
+                if (typedHistory.length > MAX_UNDO_HISTORY) typedHistory.shift();
+                pendingText = '';
+              }
+
+              // Handle focus_app specially (needs target)
+              if (result.action === 'focus_app' && result.target) {
+                const appName = matchAppName(result.target);
+                console.log(chalk.green(`[ai] Focus app: "${result.target}" → ${appName}`));
+                await typerService.focusApp(appName);
+                playBeep();
+                return;
+              }
+
+              // Execute the action
+              await executeGeneralAction(mappedAction);
+              playBeep();
+
+              // Track action for learning loop (observe for implicit feedback)
+              await learningLoop.observeAction(cleanText, result.action, result.confidence, result.tier || 3);
+
+              return;
+            }
+          } else if (result.action === 'none') {
+            console.log(chalk.dim(`[ai] "${cleanText}" is dictation, not a command`));
+          }
+        } catch (e) {
+          console.error(chalk.dim(`[ai] Error: ${e.message}`));
+        }
+      }
+    }
+
     // No command found - buffer the text briefly in case a command follows
     // In commandsOnly mode (addon setting or smart focus-based), don't type any text
     if (isCommandsOnlyActive()) {
@@ -1155,7 +1467,16 @@ async function startApplication(config, options = {}) {
   }
   await config.ensureDeepgramApiKey();
 
+  // Migrate API keys from config.json to Keychain (one-time)
+  const migration = await migrateFromConfig();
+  if (migration.migrated.length > 0) {
+    console.log(chalk.green(`[secrets] Migrated ${migration.migrated.length} key(s) to macOS Keychain`));
+  }
+
   await initializeServices(config);
+
+  // Initialize AI Intent Resolver (if enabled in settings)
+  await initializeIntentResolver();
 
   process.on('SIGINT', () => {
     stopSession(config);
@@ -1276,7 +1597,7 @@ async function startApplication(config, options = {}) {
 
   // Watch for GUI commands via shared file
   const guiCommandFile = '/tmp/s2t-gui-command';
-  const checkGuiCommands = () => {
+  const checkGuiCommands = async () => {
     if (existsSync(guiCommandFile)) {
       try {
         const command = readFileSync(guiCommandFile, 'utf8').trim();
@@ -1294,6 +1615,9 @@ async function startApplication(config, options = {}) {
             addonLoader.reloadConfig();
             console.log(chalk.green('[addons] Settings reloaded'));
           }
+        } else if (command === 'reload-ai') {
+          // Hot-reload AI understanding settings
+          await initializeIntentResolver();
         } else if (command === 'sync-tts') {
           // GUI toggled TTS - just log the current state (file already changed by GUI)
           const ttsEnabled = existsSync('/tmp/claude-auto-speak');
@@ -1343,7 +1667,9 @@ async function startApplication(config, options = {}) {
       listening: sessionActive,
       mode: currentMode,
       tts: existsSync('/tmp/claude-auto-speak'),
-      smartCommandsOnly: smartCommandsOnly
+      smartCommandsOnly: smartCommandsOnly,
+      aiEnabled: aiUnderstandingEnabled,
+      aiMode: intentResolver?.mode || null
     };
     writeFileSync('/tmp/s2t-status.json', JSON.stringify(status));
   };

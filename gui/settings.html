@@ -40,7 +40,7 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 0 20px;
+      padding: 12px 20px 16px 20px;
       overflow: hidden;
       -webkit-app-region: drag;
     }
@@ -53,7 +53,7 @@
     /* Tab navigation */
     .tabs {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       margin-bottom: 20px;
       background: transparent;
       padding: 0;
@@ -61,10 +61,10 @@
 
     .tab {
       flex: 1;
-      padding: 10px 4px;
+      padding: 10px 12px;
       border: 1px solid transparent;
       background: transparent;
-      color: #666;
+      color: #8a8a8a;
       font-size: 11px;
       font-weight: 500;
       letter-spacing: 0.2px;
@@ -84,6 +84,11 @@
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
       border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .tab:focus-visible {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
     }
 
     .tab-content {
@@ -112,7 +117,7 @@
 
     /* Collapsible command sections */
     .command-section {
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       border-radius: 8px;
       overflow: hidden;
       background: rgba(255, 255, 255, 0.03);
@@ -122,7 +127,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 14px;
+      padding: 12px 16px;
       cursor: pointer;
       user-select: none;
       transition: background 0.15s;
@@ -144,7 +149,7 @@
 
     .command-section-title .chevron {
       transition: transform 0.2s;
-      color: #555;
+      color: #8a8a8a;
       width: 10px;
       height: 10px;
     }
@@ -167,7 +172,7 @@
 
     .command-section-content-inner {
       overflow: hidden;
-      padding: 4px 14px 8px 14px;
+      padding: 8px 16px 12px 16px;
     }
 
     .command-section.collapsed .command-section-content {
@@ -181,7 +186,7 @@
     }
 
     .command-section-content .command-item {
-      padding: 6px 0;
+      padding: 8px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -196,14 +201,14 @@
     }
 
     .command-section-content .command-action {
-      color: #666;
+      color: #999;
       font-size: 11px;
       font-weight: 300;
     }
 
     .command-count {
       font-size: 10px;
-      color: #555;
+      color: #8a8a8a;
       font-weight: 400;
     }
 
@@ -239,7 +244,7 @@
     h2 {
       font-size: 11px;
       font-weight: 600;
-      margin: 16px 0 8px 0;
+      margin: 16px 0 12px 0;
       color: #737373;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -257,7 +262,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
+      padding: 14px 16px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
@@ -312,6 +317,15 @@
     .status-badge.listening {
       background: rgba(34, 197, 94, 0.2);
       color: #22c55e;
+    }
+
+    .status-badge.training {
+      background: rgba(180, 100, 220, 0.2);
+      color: #b464dc;
+    }
+
+    .status-badge.training .status-dot {
+      animation: pulse-dot 1s ease-in-out infinite;
     }
 
     .status-dot {
@@ -377,6 +391,11 @@
       transform: translateX(18px);
     }
 
+    .toggle input:focus-visible + .toggle-slider {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
+    }
+
     /* Text input */
     input[type="text"],
     input[type="password"] {
@@ -397,7 +416,7 @@
     }
 
     input[type="text"]::placeholder {
-      color: #525252;
+      color: #888;
     }
 
     /* Select dropdown */
@@ -417,6 +436,11 @@
       border-color: #22c55e;
     }
 
+    select:focus-visible {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
+    }
+
     /* Buttons */
     .btn {
       padding: 8px 16px;
@@ -426,6 +450,11 @@
       cursor: pointer;
       transition: all 0.2s;
       border: none;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
     }
 
     .btn-primary {
@@ -521,6 +550,11 @@
       color: #22c55e;
     }
 
+    .mode-option:focus-visible {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
+    }
+
     .mode-option .mode-name {
       font-size: 12px;
       font-weight: 500;
@@ -536,7 +570,7 @@
     /* Footer */
     .footer {
       margin-top: auto;
-      padding: 16px 20px 20px 20px;
+      padding: 16px 20px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
       text-align: center;
       flex-shrink: 0;
@@ -552,6 +586,11 @@
 
     .footer a:hover {
       text-decoration: underline;
+    }
+
+    .footer a:focus-visible {
+      outline: 2px solid #22c55e;
+      outline-offset: 2px;
     }
 
     #docsLink {
@@ -729,7 +768,7 @@
     }
 
     .custom-command-row input[type="text"]::placeholder {
-      color: #666;
+      color: #888;
     }
 
     .custom-command-row input[type="text"]:focus,
@@ -746,16 +785,16 @@
   <!-- Main content wrapper -->
   <div class="main-content">
   <!-- Tab Navigation -->
-  <div class="tabs">
-    <button class="tab active" data-tab="general">General</button>
-    <button class="tab advanced-tab" data-tab="addons">Addons</button>
-    <button class="tab" data-tab="api">API</button>
-    <button class="tab advanced-tab" data-tab="hotkeys">Hotkeys</button>
-    <button class="tab advanced-tab" data-tab="commands">Commands</button>
+  <div class="tabs" role="tablist" aria-label="Settings sections">
+    <button class="tab active" data-tab="general" role="tab" aria-selected="true" aria-controls="general" id="tab-general">General</button>
+    <button class="tab advanced-tab" data-tab="addons" role="tab" aria-selected="false" aria-controls="addons" id="tab-addons">Addons</button>
+    <button class="tab" data-tab="api" role="tab" aria-selected="false" aria-controls="api" id="tab-api">API</button>
+    <button class="tab advanced-tab" data-tab="hotkeys" role="tab" aria-selected="false" aria-controls="hotkeys" id="tab-hotkeys">Hotkeys</button>
+    <button class="tab advanced-tab" data-tab="commands" role="tab" aria-selected="false" aria-controls="commands" id="tab-commands">Commands</button>
   </div>
 
   <!-- General Tab -->
-  <div id="general" class="tab-content active">
+  <div id="general" class="tab-content active" role="tabpanel" aria-labelledby="tab-general">
     <h2>Service Status</h2>
     <div class="setting-group">
       <div class="setting-row">
@@ -778,14 +817,24 @@
           <button class="btn btn-danger" id="stopBtn">Stop</button>
         </div>
       </div>
+      <div class="setting-row" id="aiStatusRow" style="display: none;">
+        <div class="setting-info">
+          <div class="setting-label">AI Understanding</div>
+          <div class="setting-description" id="aiStatusDescription">Interprets natural speech as commands</div>
+        </div>
+        <span class="status-badge" id="aiStatus" style="background: rgba(139, 92, 246, 0.2); color: #a78bfa;">
+          <span class="status-dot" style="background: #a78bfa;"></span>
+          <span id="aiStatusText">Active</span>
+        </span>
+      </div>
     </div>
 
     <h2>Mode</h2>
     <div class="setting-group">
       <div class="setting-row" style="flex-direction: column; align-items: stretch;">
-        <div class="mode-selector">
-          <div class="mode-option selected" data-mode="general">
-            <div class="mode-icon">
+        <div class="mode-selector" role="radiogroup" aria-label="Speech recognition mode">
+          <div class="mode-option selected" data-mode="general" role="radio" aria-checked="true" tabindex="0">
+            <div class="mode-icon" aria-hidden="true">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -795,8 +844,8 @@
             </div>
             <div class="mode-name">General</div>
           </div>
-          <div class="mode-option" data-mode="music">
-            <div class="mode-icon">
+          <div class="mode-option" data-mode="music" role="radio" aria-checked="false" tabindex="-1">
+            <div class="mode-icon" aria-hidden="true">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 18V5l12-2v13"/>
                 <circle cx="6" cy="18" r="3"/>
@@ -805,8 +854,8 @@
             </div>
             <div class="mode-name">Music</div>
           </div>
-          <div class="mode-option" data-mode="claude">
-            <div class="mode-icon">
+          <div class="mode-option" data-mode="claude" role="radio" aria-checked="false" tabindex="-1">
+            <div class="mode-icon" aria-hidden="true">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
@@ -840,7 +889,7 @@
           <div class="setting-description">Read responses aloud using Piper TTS</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="ttsToggle">
+          <input type="checkbox" id="ttsToggle" role="switch" aria-label="Auto-speak Claude responses">
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -854,7 +903,7 @@
           <div class="setting-description">Show addons, hotkeys, and commands tabs</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="advancedToggle">
+          <input type="checkbox" id="advancedToggle" role="switch" aria-label="Advanced Mode">
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -862,7 +911,7 @@
   </div>
 
   <!-- Addons Tab -->
-  <div id="addons" class="tab-content">
+  <div id="addons" class="tab-content" role="tabpanel" aria-labelledby="tab-addons">
     <h2>Installed Addons</h2>
     <div class="setting-group" id="addonsList">
       <div class="setting-row" style="justify-content: center; color: #737373;">
@@ -946,7 +995,7 @@
   </div>
 
   <!-- API Keys Tab -->
-  <div id="api" class="tab-content">
+  <div id="api" class="tab-content" role="tabpanel" aria-labelledby="tab-api">
     <h2>Speech Recognition</h2>
     <div class="setting-group">
       <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
@@ -980,6 +1029,49 @@
       </div>
     </div>
 
+    <h2>AI Command Understanding</h2>
+    <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Enable AI Understanding</div>
+          <div class="setting-description">Use Claude to interpret natural speech into commands</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="aiUnderstandingToggle" role="switch" aria-label="Enable AI Understanding">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Mode</div>
+          <div class="setting-description">API is faster but costs ~$0.00005/call. CLI uses your Claude Code login</div>
+        </div>
+        <select id="aiUnderstandingMode">
+          <option value="auto">Auto (API if key, else CLI)</option>
+          <option value="api">API (Faster)</option>
+          <option value="cli">CLI (Uses Login)</option>
+        </select>
+      </div>
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;" id="anthropicKeyRow">
+        <div class="setting-info" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div class="setting-label">Anthropic API Key</div>
+            <div class="setting-description">Required for API mode. Stored securely in macOS Keychain</div>
+          </div>
+          <span id="anthropicKeyStatus" class="status-badge" style="font-size: 11px; display: none;">
+            <span class="status-dot" style="width: 6px; height: 6px;"></span>
+            <span id="anthropicKeyStatusText">Not set</span>
+          </span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="anthropicKey" placeholder="sk-ant-..." style="flex: 1;">
+          <button class="btn btn-secondary" id="toggleAnthropicKeyVisibility">Show</button>
+          <button class="btn btn-primary" id="saveAnthropicKey">Save</button>
+          <button class="btn btn-danger" id="deleteAnthropicKey" style="display: none;">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <h2>Audio</h2>
     <div class="setting-group">
       <div class="setting-row">
@@ -996,7 +1088,7 @@
   </div>
 
   <!-- Hotkeys Tab -->
-  <div id="hotkeys" class="tab-content">
+  <div id="hotkeys" class="tab-content" role="tabpanel" aria-labelledby="tab-hotkeys">
     <h2>Keyboard Shortcuts</h2>
     <div class="setting-group" id="hotkeysList" style="max-height: 300px; overflow-y: auto;">
       <div class="setting-row" style="justify-content: center; color: #737373;">
@@ -1037,10 +1129,10 @@
   </div>
 
   <!-- Commands Tab -->
-  <div id="commands" class="tab-content">
+  <div id="commands" class="tab-content" role="tabpanel" aria-labelledby="tab-commands">
     <div id="commandsContainer" style="padding-bottom: 20px;">
       <!-- Dynamic content loaded by JavaScript -->
-      <div style="text-align: center; color: #666; padding: 40px;">Loading commands...</div>
+      <div style="text-align: center; color: #8a8a8a; padding: 40px;">Loading commands...</div>
     </div>
   </div>
 
@@ -1057,9 +1149,9 @@
   <div class="toast" id="toast">Saved!</div>
 
   <!-- GitHub Import Modal -->
-  <div class="modal-overlay" id="githubModal">
+  <div class="modal-overlay" id="githubModal" role="dialog" aria-modal="true" aria-labelledby="githubModalTitle">
     <div class="modal">
-      <h3>Import from GitHub</h3>
+      <h3 id="githubModalTitle">Import from GitHub</h3>
       <p>Enter the GitHub repository URL for the addon:</p>
       <input type="text" id="githubUrl" placeholder="https://github.com/username/addon-name">
       <div class="modal-buttons">
@@ -1070,9 +1162,9 @@
   </div>
 
   <!-- Export Modal -->
-  <div class="modal-overlay" id="exportModal">
+  <div class="modal-overlay" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
     <div class="modal">
-      <h3>Export Addon</h3>
+      <h3 id="exportModalTitle">Export Addon</h3>
       <p>Select an addon to export:</p>
       <select id="exportAddonSelect">
         <option value="">Loading addons...</option>
@@ -1085,9 +1177,9 @@
   </div>
 
   <!-- Create Addon Modal -->
-  <div class="modal-overlay" id="createAddonModal">
+  <div class="modal-overlay" id="createAddonModal" role="dialog" aria-modal="true" aria-labelledby="createAddonModalTitle">
     <div class="modal" style="width: 450px;">
-      <h3>Create New Addon</h3>
+      <h3 id="createAddonModalTitle">Create New Addon</h3>
       <div style="margin-bottom: 12px;">
         <label style="font-size: 12px; color: #a3a3a3; display: block; margin-bottom: 4px;">Addon Name (lowercase, no spaces)</label>
         <input type="text" id="newAddonName" placeholder="my-addon" style="width: 100%;">
@@ -1156,7 +1248,7 @@
             <div style="font-size: 12px; color: #737373; margin-top: 2px;">Master toggle for all sounds</div>
           </div>
           <label class="toggle">
-            <input type="checkbox" id="audioEnabled" checked>
+            <input type="checkbox" id="audioEnabled" checked role="switch" aria-label="Sound Effects Enabled">
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -1402,7 +1494,7 @@
       const config = await ipcRenderer.invoke('get-config');
 
       // Service status
-      updateServiceStatus(state.isServiceRunning, state.isListening);
+      updateServiceStatus(state.isServiceRunning, state.isListening, state.isTraining);
 
       // Mode
       document.querySelectorAll('.mode-option').forEach(opt => {
@@ -1424,18 +1516,66 @@
       if (config.voiceModel) {
         document.getElementById('voiceModel').value = config.voiceModel;
       }
+
+      // AI Understanding settings
+      document.getElementById('aiUnderstandingToggle').checked = config.aiUnderstandingEnabled || false;
+      document.getElementById('aiUnderstandingMode').value = config.aiUnderstandingMode || 'auto';
+      // Load key status from Keychain (not config)
+      await updateAnthropicKeyStatus();
+      updateAnthropicKeyVisibility();
     }
 
-    function updateServiceStatus(running, listening) {
+    // Update Anthropic key status from Keychain
+    async function updateAnthropicKeyStatus() {
+      const hasKey = await ipcRenderer.invoke('get-key-status', 'anthropic_api_key');
+      const statusBadge = document.getElementById('anthropicKeyStatus');
+      const statusText = document.getElementById('anthropicKeyStatusText');
+      const deleteBtn = document.getElementById('deleteAnthropicKey');
+      const keyInput = document.getElementById('anthropicKey');
+
+      statusBadge.style.display = 'flex';
+
+      if (hasKey) {
+        statusBadge.style.background = 'rgba(34, 197, 94, 0.2)';
+        statusBadge.style.color = '#22c55e';
+        statusBadge.querySelector('.status-dot').style.background = '#22c55e';
+        statusText.textContent = 'Configured';
+        deleteBtn.style.display = 'block';
+        keyInput.placeholder = '••••••••••••••••';
+      } else {
+        statusBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+        statusBadge.style.color = '#ef4444';
+        statusBadge.querySelector('.status-dot').style.background = '#ef4444';
+        statusText.textContent = 'Not set';
+        deleteBtn.style.display = 'none';
+        keyInput.placeholder = 'sk-ant-...';
+      }
+    }
+
+    // Show/hide Anthropic key row based on mode selection
+    function updateAnthropicKeyVisibility() {
+      const mode = document.getElementById('aiUnderstandingMode').value;
+      const keyRow = document.getElementById('anthropicKeyRow');
+      if (mode === 'cli') {
+        keyRow.style.display = 'none';
+      } else {
+        keyRow.style.display = 'flex';
+      }
+    }
+
+    function updateServiceStatus(running, listening, training = false) {
       const badge = document.getElementById('serviceStatus');
       const text = document.getElementById('serviceStatusText');
 
-      // Three states: stopped, idle (running but not listening), listening
+      // Four states: stopped, idle (running but not listening), listening, training
       let state = 'stopped';
       let stateText = 'Stopped';
 
       if (running) {
-        if (listening) {
+        if (training) {
+          state = 'training';
+          stateText = 'Training';
+        } else if (listening) {
           state = 'listening';
           stateText = 'Listening';
         } else {
@@ -1560,6 +1700,75 @@
       const config = await ipcRenderer.invoke('get-config');
       config.voiceModel = voiceModel;
       await ipcRenderer.invoke('save-config', config);
+    });
+
+    // AI Understanding settings
+    document.getElementById('aiUnderstandingToggle').addEventListener('change', async (e) => {
+      const config = await ipcRenderer.invoke('get-config');
+      config.aiUnderstandingEnabled = e.target.checked;
+      await ipcRenderer.invoke('save-config', config);
+      // Notify backend to reload AI settings
+      require('fs').writeFileSync('/tmp/s2t-gui-command', 'reload-ai');
+      showToast(e.target.checked ? 'AI Understanding enabled' : 'AI Understanding disabled');
+    });
+
+    document.getElementById('aiUnderstandingMode').addEventListener('change', async (e) => {
+      const config = await ipcRenderer.invoke('get-config');
+      config.aiUnderstandingMode = e.target.value;
+      await ipcRenderer.invoke('save-config', config);
+      updateAnthropicKeyVisibility();
+      // Notify backend to reload AI settings
+      require('fs').writeFileSync('/tmp/s2t-gui-command', 'reload-ai');
+      showToast('AI mode updated');
+    });
+
+    document.getElementById('toggleAnthropicKeyVisibility').addEventListener('click', () => {
+      const input = document.getElementById('anthropicKey');
+      const btn = document.getElementById('toggleAnthropicKeyVisibility');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+      }
+    });
+
+    document.getElementById('saveAnthropicKey').addEventListener('click', async () => {
+      const key = document.getElementById('anthropicKey').value.trim();
+      if (!key) {
+        showToast('Please enter an API key');
+        return;
+      }
+
+      // Validate key format
+      if (!key.startsWith('sk-ant-')) {
+        showToast('Invalid key format (should start with sk-ant-)');
+        return;
+      }
+
+      // Save to Keychain (IPC handler will reload AI settings)
+      const success = await ipcRenderer.invoke('set-api-key', 'anthropic_api_key', key);
+      if (success) {
+        document.getElementById('anthropicKey').value = '';
+        await updateAnthropicKeyStatus();
+        showToast('API Key saved to macOS Keychain');
+      } else {
+        showToast('Failed to save key to Keychain');
+      }
+    });
+
+    document.getElementById('deleteAnthropicKey').addEventListener('click', async () => {
+      const confirmed = confirm('Delete Anthropic API key from Keychain?');
+      if (!confirmed) return;
+
+      const success = await ipcRenderer.invoke('delete-api-key', 'anthropic_api_key');
+      if (success) {
+        await updateAnthropicKeyStatus();
+        showToast('API Key removed from Keychain');
+      } else {
+        showToast('Failed to remove key from Keychain');
+      }
     });
 
     // Audio settings modal
@@ -2457,7 +2666,7 @@
     // Unified state change handler for consistent updates
     ipcRenderer.on('state-changed', (event, state) => {
       // Update service status
-      updateServiceStatus(state.isServiceRunning, state.isListening);
+      updateServiceStatus(state.isServiceRunning, state.isListening, state.isTraining);
 
       // Update mode selector
       document.querySelectorAll('.mode-option').forEach(opt => {
@@ -2466,7 +2675,29 @@
 
       // Update TTS toggle
       document.getElementById('ttsToggle').checked = state.ttsEnabled;
+
+      // Update AI status indicator
+      updateAIStatus(state.aiEnabled, state.aiMode);
     });
+
+    // Update AI status indicator
+    function updateAIStatus(enabled, mode) {
+      const aiRow = document.getElementById('aiStatusRow');
+      const aiText = document.getElementById('aiStatusText');
+      const aiDesc = document.getElementById('aiStatusDescription');
+
+      if (enabled) {
+        aiRow.style.display = 'flex';
+        aiText.textContent = mode === 'api' ? 'API' : mode === 'cli' ? 'CLI' : 'Active';
+        aiDesc.textContent = mode === 'api'
+          ? 'Using Anthropic API (~$0.00005/call)'
+          : mode === 'cli'
+          ? 'Using Claude CLI (your login)'
+          : 'Interprets natural speech as commands';
+      } else {
+        aiRow.style.display = 'none';
+      }
+    }
 
     // Command sections data - comprehensive list of all commands
     const builtInCommands = {

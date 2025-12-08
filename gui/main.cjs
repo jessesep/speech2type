@@ -14,6 +14,10 @@ const fs = require('fs');
 const https = require('https');
 const { createWriteStream, mkdirSync, cpSync, rmSync } = require('fs');
 const { pipeline } = require('stream/promises');
+const keytar = require('keytar');
+
+// Service name for Keychain
+const KEYCHAIN_SERVICE = 'one-voice';
 
 console.log('Modules loaded');
 
@@ -35,6 +39,9 @@ let currentMode = 'general';
 let ttsEnabled = false;
 let isSpeaking = false;
 let smartModeEnabled = false;
+let aiEnabled = false;
+let aiMode = null;
+let isTraining = false;  // Training mode state (Phase 2.8)
 
 // Animation state
 let animationInterval = null;
@@ -98,7 +105,7 @@ const icons = {};
 /**
  * Create tray icon using nativeImage - Mode-specific animations
  * Uses 2x resolution (32x32) for crisp retina display
- * @param {string} state - idle, listening, speaking, processing, error, disabled
+ * @param {string} state - idle, listening, speaking, processing, error, disabled, training
  * @param {number} frame - animation frame (0-15) for smooth wave animation
  */
 function createTrayIcon(state, frame = 0) {
@@ -106,7 +113,7 @@ function createTrayIcon(state, frame = 0) {
   const scale = 2;
   const width = 16 * scale;  // 32px
   const height = 16 * scale; // 32px
-  const cacheKey = `${state}-${frame}-${currentMode}-${smartModeEnabled}`;
+  const cacheKey = `${state}-${frame}-${currentMode}-${smartModeEnabled}-${isTraining}`;
 
   if (icons[cacheKey]) {
     return icons[cacheKey];
@@ -119,7 +126,8 @@ function createTrayIcon(state, frame = 0) {
     processing: [240, 180, 70, 255],  // Soft amber
     error: [230, 100, 100, 255],      // Soft red
     disabled: [120, 120, 120, 255],   // Gray
-    idle: [0, 0, 0, 255]              // Black (template)
+    idle: [0, 0, 0, 255],             // Black (template)
+    training: [180, 100, 220, 255]    // Purple/magenta for training mode (Phase 2.8)
   };
 
   // Mode-specific colors when listening
@@ -133,7 +141,7 @@ function createTrayIcon(state, frame = 0) {
 
   const [r, g, b, a] = colorMap[state] || colorMap.idle;
   const isTemplate = state === 'idle';
-  const isAnimated = state === 'listening' || state === 'speaking' || state === 'processing';
+  const isAnimated = state === 'listening' || state === 'speaking' || state === 'processing' || state === 'training';
 
   const buffer = Buffer.alloc(width * height * 4);
 
@@ -539,6 +547,10 @@ function updateTrayIcon() {
     state = 'disabled';
     tooltip = 'Speech2Type - Service stopped';
     stopAnimation();
+  } else if (isTraining) {
+    state = 'training';
+    tooltip = 'ONE - Training Mode';
+    startAnimation();
   } else if (isSpeaking) {
     state = 'speaking';
     tooltip = 'Speech2Type - Speaking...';
@@ -1438,11 +1450,19 @@ function openSettings() {
     return;
   }
 
+  // Calculate responsive window height based on screen size
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const screenHeight = primaryDisplay.workAreaSize.height; // Excludes menu bar and dock
+  const maxWindowHeight = Math.min(820, screenHeight - 40); // Leave 40px margin
+
   settingsWindow = new BrowserWindow({
     width: 520,
-    height: 820,
+    height: maxWindowHeight,
+    minHeight: 600, // Minimum usable height
+    maxHeight: 820,  // Maximum height (original design)
     title: 'Speech2Type Settings',
-    resizable: false,
+    resizable: true,  // Allow vertical resize for user preference
     minimizable: false,
     maximizable: false,
     webPreferences: {
@@ -1541,6 +1561,12 @@ function startStateWatcher() {
         if (status.smartCommandsOnly !== undefined) {
           smartModeEnabled = status.smartCommandsOnly;
         }
+
+        // Sync AI status
+        if (status.aiEnabled !== undefined) {
+          aiEnabled = status.aiEnabled;
+          aiMode = status.aiMode || null;
+        }
       }
     } catch (e) {
       // Ignore read errors
@@ -1564,7 +1590,9 @@ function startStateWatcher() {
           isServiceRunning,
           currentMode,
           ttsEnabled,
-          smartModeEnabled
+          smartModeEnabled,
+          aiEnabled,
+          aiMode
         });
       }
     }
@@ -1579,7 +1607,8 @@ ipcMain.handle('get-state', () => ({
   isServiceRunning,
   currentMode,
   ttsEnabled,
-  isSpeaking
+  isSpeaking,
+  isTraining
 }));
 ipcMain.handle('get-addons', () => getAddonsList());
 ipcMain.handle('get-addon-commands', (event, addonName) => {
@@ -1693,6 +1722,50 @@ ipcMain.handle('test-audio', (event, { filePath, volume }) => {
   return true;
 });
 
+// Secure API Key Storage via macOS Keychain
+ipcMain.handle('get-key-status', async (event, keyName) => {
+  try {
+    const value = await keytar.getPassword(KEYCHAIN_SERVICE, keyName);
+    return value !== null;
+  } catch (e) {
+    console.error(`[keychain] Failed to get status for ${keyName}:`, e.message);
+    return false;
+  }
+});
+
+ipcMain.handle('get-api-key', async (event, keyName) => {
+  try {
+    return await keytar.getPassword(KEYCHAIN_SERVICE, keyName);
+  } catch (e) {
+    console.error(`[keychain] Failed to get ${keyName}:`, e.message);
+    return null;
+  }
+});
+
+ipcMain.handle('set-api-key', async (event, keyName, value) => {
+  try {
+    await keytar.setPassword(KEYCHAIN_SERVICE, keyName, value);
+    // Notify backend to reload AI settings
+    fs.writeFileSync('/tmp/s2t-gui-command', 'reload-ai');
+    return true;
+  } catch (e) {
+    console.error(`[keychain] Failed to set ${keyName}:`, e.message);
+    return false;
+  }
+});
+
+ipcMain.handle('delete-api-key', async (event, keyName) => {
+  try {
+    await keytar.deletePassword(KEYCHAIN_SERVICE, keyName);
+    // Notify backend to reload AI settings
+    fs.writeFileSync('/tmp/s2t-gui-command', 'reload-ai');
+    return true;
+  } catch (e) {
+    console.error(`[keychain] Failed to delete ${keyName}:`, e.message);
+    return false;
+  }
+});
+
 ipcMain.on('open-addon-docs', (event, docsPath) => {
   // Open the markdown file with the default app (or show in Finder)
   shell.openPath(docsPath);
@@ -1706,6 +1779,17 @@ ipcMain.on('set-smart-mode', (event, enabled) => {
   console.log('Received set-smart-mode:', enabled, 'current:', smartModeEnabled);
   if (enabled !== smartModeEnabled) {
     toggleSmartMode();
+  }
+});
+ipcMain.on('set-training', (event, enabled) => {
+  console.log('Received set-training:', enabled, 'current:', isTraining);
+  if (enabled !== isTraining) {
+    isTraining = enabled;
+    updateTrayIcon();
+    // Notify settings window if open
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('state-changed', { isTraining });
+    }
   }
 });
 ipcMain.on('start-service', () => startS2T());

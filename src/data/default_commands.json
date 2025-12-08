@@ -1,0 +1,192 @@
+{
+  "description": "Default command phrases migrated from GENERAL_COMMANDS. These form the initial dictionary before user personalization.",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "action": "enter",
+      "phrases": [
+        "affirmative",
+        "affirmatives",
+        "affirm a tive",
+        "affirm ative",
+        "firm ative",
+        "computer affirmative",
+        "computer enter",
+        "computer submit",
+        "computer send",
+        "computer go",
+        "computer done"
+      ]
+    },
+    {
+      "action": "undo",
+      "phrases": [
+        "retract",
+        "retracts",
+        "retracted",
+        "re tract",
+        "ree tract",
+        "detract",
+        "computer retract",
+        "computer undo",
+        "computer oops",
+        "computer nevermind",
+        "computer never mind"
+      ]
+    },
+    {
+      "action": "clear_all",
+      "phrases": [
+        "computer scratch",
+        "computer scratch all",
+        "computer scratch that",
+        "computer scrap",
+        "computer scrap all",
+        "computer scrap that"
+      ]
+    },
+    {
+      "action": "copy",
+      "phrases": [
+        "computer copy"
+      ]
+    },
+    {
+      "action": "paste",
+      "phrases": [
+        "computer paste"
+      ]
+    },
+    {
+      "action": "cut",
+      "phrases": [
+        "computer cut"
+      ]
+    },
+    {
+      "action": "select_all",
+      "phrases": [
+        "computer select all"
+      ]
+    },
+    {
+      "action": "save",
+      "phrases": [
+        "computer save"
+      ]
+    },
+    {
+      "action": "find",
+      "phrases": [
+        "computer find"
+      ]
+    },
+    {
+      "action": "new_tab",
+      "phrases": [
+        "computer new tab"
+      ]
+    },
+    {
+      "action": "close_tab",
+      "phrases": [
+        "computer close tab"
+      ]
+    },
+    {
+      "action": "new_window",
+      "phrases": [
+        "computer new window"
+      ]
+    },
+    {
+      "action": "stop_listening",
+      "phrases": [
+        "computer stop listening",
+        "computer stopped listening",
+        "computer stop lesson",
+        "computer stop lessening",
+        "computer stop listing",
+        "computer stop listen",
+        "computer stuff listening",
+        "computer stock listening",
+        "computer top listening"
+      ]
+    },
+    {
+      "action": "tts_on",
+      "phrases": [
+        "computer text to speech on",
+        "computer speech on",
+        "computer speak on",
+        "computer speaking on",
+        "computer voice on"
+      ]
+    },
+    {
+      "action": "tts_off",
+      "phrases": [
+        "computer text to speech off",
+        "computer speech off",
+        "computer speak off",
+        "computer speaking off",
+        "computer voice off"
+      ]
+    },
+    {
+      "action": "claude_resume",
+      "phrases": [
+        "computer resume"
+      ]
+    },
+    {
+      "action": "claude_fresh",
+      "phrases": [
+        "computer fresh"
+      ]
+    },
+    {
+      "action": "smart_commands_on",
+      "phrases": [
+        "computer smart mode on",
+        "computer focus mode on"
+      ]
+    },
+    {
+      "action": "smart_commands_off",
+      "phrases": [
+        "computer smart mode off",
+        "computer focus mode off"
+      ]
+    },
+    {
+      "action": "mode_general",
+      "phrases": [
+        "computer general mode",
+        "computer general",
+        "computer normal mode",
+        "computer default mode",
+        "computer regular mode"
+      ]
+    },
+    {
+      "action": "mode_claude",
+      "phrases": [
+        "computer power mode",
+        "computer powermode",
+        "computer power-mode",
+        "computer claude mode",
+        "computer powered mode",
+        "computer par mode",
+        "computer pour mode",
+        "computer tower mode",
+        "computer powder mode",
+        "computer hour mode",
+        "computer flower mode",
+        "computer coding mode",
+        "computer claw mode",
+        "computer cloud mode"
+      ]
+    }
+  ]
+}

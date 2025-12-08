@@ -1,26 +1,36 @@
-# Speech2Type Enhanced
+# ONE - Voice-First AI Operating Layer
 
-> **Voice typing from your terminal with voice commands.**
+> **Control your Mac with voice. Let AI understand what you mean.**
 
-An extensively reworked fork of [Speech2Type](https://github.com/nicobrenner/speech2type) with a full GUI, voice commands, multi-mode support, and Claude Code integration.
+ONE (formerly Speech2Type Enhanced) is evolving from a voice typing tool into an intelligent voice-first command layer for macOS. Currently at **v0.7**, it combines real-time voice transcription with AI-powered command understanding.
 
-### What's New in Enhanced
+## ✨ What Makes ONE Different
+
+- **AI Understands You**: Say commands naturally—"ship it", "open my code"—ONE figures out what you mean
+- **Learns From You**: The more you use it, the better it understands your vocabulary
+- **Works Everywhere**: Claude Code, Cursor, Slack, Chrome—any Mac app with text input
+- **Secure by Default**: API keys stored in macOS Keychain, not config files
+
+### Current Features (v0.7)
 
 | Feature | Description |
 |---------|-------------|
-| **🖥️ Menu Bar GUI** | Full Electron app with settings, status indicators, and animated icons |
-| **🎤 Voice Commands** | 30+ commands: "affirmative", "retract", "focus chrome", etc. |
+| **🤖 AI Command Understanding** | Claude Haiku interprets natural speech, learns your phrases |
+| **🎤 Voice Transcription** | Real-time Deepgram STT with 40+ language support |
+| **🖥️ Menu Bar GUI** | Full Electron app with settings and status indicators |
+| **🔒 Secure Storage** | API keys in macOS Keychain via keytar |
 | **🎛️ Multiple Modes** | General, Claude (auto-pause/resume), Music (Ableton control) |
-| **🔊 Audio Feedback** | Configurable sounds for start/stop, commands, errors, mode switch |
+| **🔊 Audio Feedback** | Configurable sounds for start/stop, commands, errors |
 | **🗣️ Claude TTS** | Auto-read Claude Code responses with Piper neural TTS |
-| **🎹 Addon System** | Create custom modes with hot-reload support |
 | **⌨️ Hotkeys** | Cmd+; toggle, push-to-talk, spacebar stop TTS |
 
 See [CHANGELOG.md](CHANGELOG.md) for full release history.
 
 ---
 
-## Installation
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 npm install -g speech2type-enhanced
@@ -36,254 +46,176 @@ s2t start
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://www.apple.com/macos/)
 
-## ✨ Features
-
-- **⚡️ Real-time transcription**: Your words appear instantly as you speak
-- **💻 Works everywhere**: Claude Code, Cursor, Slack, Chrome, Lovable... any Mac app with text input
-- **🎯 Inline-typing**: Text is inserted directly at the cursor's position (no clipboard involved).
-- **💸 Completely free**: Open source with free Deepgram API tier
-- **🌍 40+ languages**: English, Spanish, French, German, Japanese, Chinese, and many more
-
-### Voice Commands
-
-| Say | Action |
-|-----|--------|
-| **"affirmative"** | Press Enter (submit) |
-| **"retract"** | Undo last spoken text |
-| **"retract everything confirm"** | Clear entire input field |
-| **"silence"** | Stop text-to-speech |
-| **"focus chrome"** | Switch to app |
-| **"terminal 1"** | Switch Terminal window |
-
-### Hotkeys
-
-| Key | Action |
-|-----|--------|
-| **Cmd+;** | Start/stop voice typing |
-| **Cmd+'** | Toggle Claude auto-speak |
-| **Cmd+Option** (hold) | Push-to-talk in Music mode |
-| **Spacebar** | Stop TTS while speaking |
-
-### Modes
-
-Speech2Type has three operating modes:
-
-| Mode | Activation | Description |
-|------|------------|-------------|
-| **General** | "computer general mode" | Default mode for everyday use |
-| **Music** | "computer music mode" | Ableton Live voice control with push-to-talk |
-| **Claude** | "computer power mode" | Auto-pause after submit, resume after response |
-
-See [Voice Commands](#-voice-commands), [Modes](#️-modes), and [Claude Code Integration](#-claude-code-integration) for full details.
-
-### Perfect for:
-- **Developers**: Vibe coding in any environment (Claude Code CLI, Cursor IDE, etc.)
-- **Creators**: Dictating in any text editor
-- **Productivity**: Quick voice input in Slack, email, and more
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-npm install -g speech2type
-```
-
 ### First Run
 
 ```bash
 # Start the application
-# s2t or s2t start
 s2t start
 
 # Follow the setup wizard to:
 # 1. Get your FREE Deepgram API key from https://deepgram.com
-# 2. Configure your language preference (default: English)
-# 3. Set up your hotkey (default: ⌘;)
-# 4. Grant microphone and accessibility permissions
+# 2. (Optional) Add your Anthropic API key for AI command understanding
+# 3. Configure language preference (default: English)
+# 4. Set up your hotkey (default: ⌘;)
+# 5. Grant microphone and accessibility permissions
 ```
 
-### Usage
+### Basic Usage
 
-1. **Start the app**: Run `s2t start` in your terminal
-2. **Position your cursor**: Click in where you want text to appear
-3. **Press your hotkey**: Default is ⌘; to start listening
-4. **Speak**: Your words will appear in real-time at your cursor
-5. **Press hotkey again**: Stop listening
+1. **Start ONE**: Run `s2t start` in your terminal
+2. **Position cursor**: Click where you want text to appear
+3. **Press hotkey**: Default is ⌘; to start listening
+4. **Speak**: Your words appear in real-time at your cursor
+5. **Use commands**: Say "affirmative" to submit, "retract" to undo
+6. **Press hotkey again**: Stop listening
 
-That's it! You now have voice typing in every Mac app.
+That's it! You now have intelligent voice control in every Mac app.
+
+---
+
+## 🤖 AI-Powered Commands (v0.7 New!)
+
+ONE now understands natural speech using Claude Haiku. Say commands how you'd naturally say them.
+
+### How It Works
+
+```
+Traditional (exact match):
+  You: "computer focus terminal"  ✅ Works
+  You: "switch to terminal"       ❌ Doesn't work
+
+ONE v0.7 (AI understanding):
+  You: "switch to terminal"       ✅ Works
+  You: "open my terminal"         ✅ Works
+  You: "go to the terminal app"   ✅ Works
+
+  AI figures out you want to focus Terminal.
+```
+
+### Intelligent Features
+
+- **Natural Language**: Say commands in your own words
+- **Fuzzy Matching**: Typos and variations work automatically
+- **Auto-Learning**: High-confidence AI results get saved to your personal dictionary
+- **Cost-Efficient**: ~$0.00005 per command via Claude Haiku API
+- **Privacy-First**: API key stored in macOS Keychain
+
+**Cost example**: 1,000 commands ≈ $0.05 (five cents)
+
+### Setup AI Commands
+
+1. Get an Anthropic API key from [https://console.anthropic.com](https://console.anthropic.com)
+2. Open ONE settings (click menu bar icon)
+3. Add your API key—it's stored securely in macOS Keychain
+4. Start using natural commands!
+
+**Note**: AI commands are optional. ONE works without an API key using exact command matching.
+
+---
 
 ## 🎤 Voice Commands
 
-This fork includes voice commands for hands-free control. All commands work with punctuation (e.g., "Affirmative." works the same as "affirmative").
+ONE supports 30+ voice commands for hands-free control. Commands work with or without punctuation.
 
 ### Command Prefix
 
-All voice commands require the **"computer"** prefix to avoid conflicts with normal speech. The exceptions are "affirmative" and "retract" which work without the prefix for faster workflow.
+Most commands require the **"computer"** prefix to avoid conflicts with normal speech. Exceptions: "affirmative" and "retract" work without prefix for faster workflow.
 
 The app automatically normalizes "computers" to "computer" (common speech recognition error).
 
-### Submit / Enter
+### Essential Commands
 
 | Say | Action |
 |-----|--------|
 | **"affirmative"** | Press Enter (submit text) |
-| **"computer affirmative"** | Press Enter (submit text) |
-| **"computer enter"** | Press Enter (submit text) |
-| **"computer submit"** | Press Enter (submit text) |
-
-### Undo / Delete Last Chunk
-
-| Say | Action |
-|-----|--------|
 | **"retract"** | Delete the last transcribed text |
-| **"computer retract"** | Delete the last transcribed text |
-| **"computer undo"** | Delete the last transcribed text |
+| **"computer scratch"** | Clear entire input field |
+| **"computer stop listening"** | Stop voice recognition |
 
-*You can say "retract" multiple times to undo multiple chunks (up to 20).*
+### App Switching
 
-### Clear Entire Input Field
+Use any prefix: **"focus"**, **"switch to"**, **"go to"**, **"open"**
 
-| Say | Action |
-|-----|--------|
-| **"computer scratch"** | Select all and delete (clears the input field) |
-| **"computer scratch all"** | Select all and delete (clears the input field) |
-| **"computer scratch that"** | Select all and delete (clears the input field) |
+| Say | Switches To |
+|-----|-------------|
+| "focus terminal" | Terminal |
+| "focus chrome" / "focus google" | Google Chrome |
+| "focus safari" | Safari |
+| "focus code" / "focus vs code" | Visual Studio Code |
+| "focus cursor" | Cursor |
+| "focus slack" | Slack |
+| "focus spotify" / "focus music" | Spotify |
 
-### Text-to-Speech Control
-
-| Say | Action |
-|-----|--------|
-| **"computer speech on"** | Enable text-to-speech |
-| **"computer speech off"** | Disable text-to-speech |
-| **"computer text to speech on"** | Enable text-to-speech |
-| **"computer text to speech off"** | Disable text-to-speech |
-
-*You can also press Cmd+' to toggle Claude auto-speak, or Spacebar to stop current TTS playback.*
+*And 10+ more apps—see full list below*
 
 ### Clipboard & Editing
 
 | Say | Action |
 |-----|--------|
-| **"computer copy"** | Copy selection (Cmd+C) |
-| **"computer paste"** | Paste (Cmd+V) |
-| **"computer cut"** | Cut selection (Cmd+X) |
-| **"computer select all"** | Select all (Cmd+A) |
-| **"computer save"** | Save (Cmd+S) |
-| **"computer find"** | Find (Cmd+F) |
-
-### Window Management
-
-| Say | Action |
-|-----|--------|
-| **"computer new tab"** | New tab (Cmd+T) |
-| **"computer close tab"** | Close tab (Cmd+W) |
-| **"computer new window"** | New window (Cmd+N) |
-
-### Listening Control
-
-| Say | Action |
-|-----|--------|
-| **"computer stop listening"** | Stop voice recognition |
-
-### App Switching
-
-Use any of these prefixes: **"focus"**, **"switch to"**, **"go to"**, **"open"**
-
-| Say | Switches To |
-|-----|-------------|
-| "focus terminal" | Terminal |
-| "focus chrome" / "focus google" / "focus browser" | Google Chrome |
-| "focus safari" | Safari |
-| "focus finder" / "focus files" | Finder |
-| "focus code" / "focus vs code" / "focus vscode" | Visual Studio Code |
-| "focus cursor" | Cursor |
-| "focus slack" | Slack |
-| "focus discord" | Discord |
-| "focus spotify" / "focus music" | Spotify |
-| "focus notes" | Notes |
-| "focus messages" | Messages |
-| "focus mail" / "focus email" | Mail |
-| "focus preview" | Preview |
-| "focus settings" / "focus preferences" | System Settings |
+| "computer copy" | Copy selection (Cmd+C) |
+| "computer paste" | Paste (Cmd+V) |
+| "computer select all" | Select all (Cmd+A) |
+| "computer save" | Save (Cmd+S) |
 
 ### Terminal Window Switching
 
-Switch between multiple Terminal windows by index or by searching window titles:
+Switch between multiple Terminal windows by index or by searching titles:
 
 | Say | Action |
 |-----|--------|
-| **"terminal 1"** | Switch to Terminal window 1 |
-| **"terminal 2"** | Switch to Terminal window 2 |
-| **"window 1"** | Switch to Terminal window 1 |
-| **"terminal claude"** | Switch to Terminal window containing "claude" in title |
-| **"terminal ssh"** | Switch to Terminal window containing "ssh" in title |
-| **"window with code"** | Switch to Terminal window containing "code" in title |
+| "terminal 1" / "terminal 2" | Switch to Terminal window 1 or 2 |
+| "terminal claude" | Switch to Terminal with "claude" in title |
+| "window with ssh" | Switch to Terminal with "ssh" in title |
 
-*Note: Terminal window titles typically show the current directory and running command.*
+See [Full Command Reference](#full-command-reference) for all 30+ commands.
+
+---
 
 ## 🎛️ Modes
 
-Speech2Type supports three operating modes, each optimized for different workflows.
+ONE adapts to different workflows with three operating modes.
 
 ### General Mode (Default)
 
-The standard mode for everyday voice typing. All commands work with the "computer" prefix.
+Standard mode for everyday voice typing and commands.
 
-**Activate:** "computer general mode" (or start fresh)
+**Activate:** "computer general mode"
 
 ### Music Mode (Ableton Live)
 
-Voice control for Ableton Live via OSC. Features push-to-talk for non-intrusive control during music production.
+Voice control for Ableton Live via OSC with push-to-talk.
 
-**Activate:** "computer music mode" or "computer ableton mode"
+**Activate:** "computer music mode"
 
 **Features:**
 - **Push-to-talk**: Hold Cmd+Option to speak, release to auto-submit
 - **OSC Integration**: Controls Ableton via AbletonOSC
-- **Extensive commands**: Transport, track controls, scene management, and more
+- **Extensive commands**: Transport, tracks, scenes, and more
 
-See [Ableton Voice Commands](docs/ableton-voice-commands.md) for full documentation.
+See [docs/ableton-voice-commands.md](docs/ableton-voice-commands.md) for full documentation.
 
 **Requirements:**
 - Ableton Live 11+
-- [AbletonOSC](https://github.com/ideoforms/AbletonOSC) installed and enabled
+- [AbletonOSC](https://github.com/ideoforms/AbletonOSC) installed
 
 ### Claude Mode (Power Mode)
 
-Optimized for conversations with Claude Code. Automatically pauses listening after you submit, then resumes when Claude finishes responding.
+Optimized for Claude Code conversations. Auto-pauses after submit, resumes after Claude responds.
 
 **Activate:** "computer power mode" or "computer claude mode"
 
 **Features:**
-- **Auto-pause**: Listening stops after "affirmative" (submit)
-- **Auto-resume**: Listening restarts when Claude's response completes
-- **Seamless workflow**: No manual toggling needed during conversation
+- Auto-pause listening after "affirmative" (submit)
+- Auto-resume when Claude finishes responding
+- Seamless back-and-forth conversation flow
 
-This mode works best with the Claude Code integration hook installed.
+Works best with the Claude Code integration hook (see below).
 
-### Mode Commands
-
-These commands work in any mode:
-
-| Voice Command | Action |
-|---------------|--------|
-| "computer general mode" | Switch to General mode |
-| "computer music mode" | Switch to Music (Ableton) mode |
-| "computer ableton mode" | Switch to Music (Ableton) mode |
-| "computer power mode" | Switch to Claude mode |
-| "computer claude mode" | Switch to Claude mode |
+---
 
 ## 🤖 Claude Code Integration
 
-This fork includes a hook that automatically reads Claude Code responses aloud using Piper TTS (neural text-to-speech).
-
-### Hotkeys
-
-| Hotkey | Action |
-|--------|--------|
-| **Cmd+;** | Start/stop voice typing |
-| **Cmd+'** | Toggle Claude auto-speak on/off |
+ONE includes a hook that reads Claude Code responses aloud using Piper TTS (neural text-to-speech).
 
 ### Setup
 
@@ -297,7 +229,6 @@ pip install piper-tts
 mkdir -p ~/.local/share/piper-voices
 cd ~/.local/share/piper-voices
 # Download from https://github.com/rhasspy/piper/releases
-# Look for en_US-lessac-high.onnx and en_US-lessac-high.onnx.json
 ```
 
 3. **Copy the hook script:**
@@ -327,38 +258,36 @@ chmod +x ~/.claude/hooks/speak-response.sh
 ```
 *Replace `YOURUSERNAME` with your actual username.*
 
-5. **Enable auto-speak by default** (optional) - Add to `~/.zshrc`:
-```bash
-touch /tmp/claude-auto-speak
-```
-
 ### How It Works
 
-- When Claude finishes responding, the hook reads the response aloud using Piper TTS
-- The voice is tuned for natural speech (faster generation, deeper pitch)
-- Speech2type pauses transcription while TTS is active (saves Deepgram API costs, prevents feedback loops)
-- Toggle on/off anytime with **Cmd+'**
+- Claude finishes → hook reads response aloud using Piper TTS
+- ONE pauses transcription during TTS (saves API costs, prevents feedback)
+- Toggle on/off with **Cmd+'**
 - Say **"silence"** to stop current speech
-- Falls back to macOS `say` command if Piper is not installed
+- Falls back to macOS `say` if Piper not installed
 
-See [claude-hooks/README.md](claude-hooks/README.md) for detailed documentation.
+See [claude-hooks/README.md](claude-hooks/README.md) for details.
+
+---
 
 ## 📋 Requirements
 
-- **macOS 13+ with Apple Silicon**
-- **Node.js 18+** 
+- **macOS 13+ with Apple Silicon** (Intel Macs work but slower)
+- **Node.js 18+**
 - **Deepgram API key** (free tier available, no credit card required)
-- **Xcode Command Line Tools** (only for development)
+- **Anthropic API key** (optional, for AI commands)
 
 ### System Permissions
 
-Speech2Type requires two permissions that will be requested on first run:
+ONE requires these permissions (requested on first run):
 
 1. **Microphone access**: To capture your voice
-2. **Accessibility access**: To listen global hotkeys
+2. **Accessibility access**: To listen for global hotkeys
 3. **Automation access - System Events**: To inject text into other applications
 
-Grant these permissions in **System Settings → Privacy & Security** for **your terminal app from which you run Speech2Type**!
+Grant permissions in **System Settings → Privacy & Security** for **your terminal app**!
+
+---
 
 ## ⚙️ Configuration
 
@@ -371,59 +300,59 @@ s2t config
 ### Configure Individual Settings
 
 ```bash
-# Change hotkey combination (default: ⌘;)
+# Change hotkey (default: ⌘;)
 s2t config --hotkey
 
-# Select language for speech recognition (default: English)
+# Select language (default: English)
 s2t config --language
 
-# Update your Deepgram API key (or set the DEEPGRAM_API_KEY environment variable)
+# Update Deepgram API key
 s2t config --deepgram-api-key
 ```
 
 ### Supported Languages
 
-Speech2Type supports 40+ languages including:
-- Bulgarian: bg,
-- Catalan: ca,
-- Chinese (Mandarin, Simplified):zh, zh-CN,zh-Hans,
-- Chinese (Mandarin, Traditional):zh-TW,zh-Hant,
-- Chinese (Cantonese, Traditional): zh-HK,
-- Czech: cs,
-- Danish: da, da-DK,
-- Dutch: nl,
-- English: en, en-US, en-AU, en-GB, en-NZ, en-IN,
-- Estonian: et,
-- Finnish: fi,
-- Flemish: nl-BE,
-- French: fr, fr-CA,
-- German: de,
-- German (Switzerland): de-CH,
-- Greek: el,
-- Hindi: hi,
-- Hungarian: hu,
-- Indonesian: id,
-- Italian: it,
-- Japanese: ja,
-- Korean: ko, ko-KR,
-- Latvian: lv,
-- Lithuanian: lt,
-- Malay: ms,
-- Norwegian: no,
-- Polish: pl,
-- Portuguese: pt, pt-BR, pt-PT,
-- Romanian: ro,
-- Russian: ru,
-- Slovak: sk,
-- Spanish: es, es-419,
-- Swedish: sv, sv-SE,
-- Thai: th, th-TH,
-- Turkish: tr,
-- Ukrainian: uk,
-- Vietnamese: vi
+ONE supports 40+ languages including:
+- English (US, UK, AU, NZ, IN)
+- Spanish, French, German, Italian, Portuguese
+- Chinese (Mandarin, Cantonese)
+- Japanese, Korean, Hindi
+- And 30+ more
 
-See [supported languages](https://developers.deepgram.com/docs/models-languages-overview#nova-2) for the up-to-date full list.
+See [supported languages](https://developers.deepgram.com/docs/models-languages-overview#nova-2) for the full list.
 
+---
+
+## 🗺️ Roadmap
+
+ONE is evolving from voice typing to intelligent voice orchestration.
+
+### Phase 1: Foundation (v0.7) ✅ COMPLETE
+- [x] AI command understanding (Claude Haiku)
+- [x] Personal command dictionary with auto-learning
+- [x] Secure API key storage (macOS Keychain)
+- [x] Fuzzy matching for command variations
+
+### Phase 2: Training Mode (v0.8) 🎯 NEXT
+- [ ] "Computer learn" - teach new commands through conversation
+- [ ] Correction flow: "No, I meant..."
+- [ ] Workflow creation: record multi-step sequences
+- [ ] Voice feedback: "Got it, what should that do?"
+
+### Phase 3: Context & Profiles (v0.9) 📋 PLANNED
+- [ ] Per-app command profiles
+- [ ] Auto-detect context (coding vs writing vs music)
+- [ ] Context-aware command suggestions
+
+### Phase 4: Multi-Agent Orchestration (v1.0) 🚀 VISION
+- [ ] Spawn multiple AI agents via voice
+- [ ] Task decomposition: "Build me a landing page"
+- [ ] Agent coordination with voice feedback
+- [ ] Voice-controlled workflow automation
+
+See [.planning/one/ROADMAP.md](.planning/one/ROADMAP.md) for detailed specifications.
+
+---
 
 ## 🛠️ Development
 
@@ -447,73 +376,59 @@ npm run dev
 ### Project Structure
 
 ```
-speech2type/
-├── bin/                   # Executable scripts
-│   └── speech2type        # Main CLI entry point
-├── src/                   # JavaScript source code
-│   ├── index.js           # Main application logic
-│   ├── config.js          # Configuration management
-│   └── services/          # Core services
-│       ├── hotkey.js      # Global hotkey management
-│       ├── transcriber.js # Deepgram integration
-│       └── typer.js       # Text injection via osascript
-|       └── permission.js  # macOS permission handling
-├── data/                  # Language data
-│   └── languages.json     # Supported languages
-└── swift/                 # Native Swift components
-    ├── hotkey-manager.swift     # Global hotkey capture
-    ├── mic-recorder.swift       # Audio recording
-    └── permission-checker.swift # System permissions
+speech2type/ (evolving to ONE)
+├── src/
+│   ├── index.js                  # Main application
+│   ├── services/
+│   │   ├── intent-resolver.js    # AI command understanding (v0.7)
+│   │   ├── commands.js           # Personal dictionary (v0.7)
+│   │   ├── secrets.js            # Keychain storage (v0.7)
+│   │   ├── transcriber.js        # Deepgram integration
+│   │   └── typer.js              # Text injection
+│   └── data/
+│       └── default_commands.json # Default command library
+├── gui/                          # Electron menu bar app
+├── swift/                        # Native macOS components
+├── tests/                        # Vitest test suites (155 tests)
+└── .planning/one/                # Future specs & roadmap
 ```
+
+---
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
 **1. "Permission denied" errors**
-- Grant microphone access to your terminal app in System Settings → Privacy & Security → Microphone
-- Grant accessibility access to your terminal app in System Settings → Privacy & Security → Accessibility
-
-
-  *Important: the terminal app must be the one that is running Speech2Type.
-  Common terminal apps: Terminal (built-in macOS terminal), Cursor (integrated in-app terminals), Warp, VS Code...*
-
+- Grant microphone access: System Settings → Privacy & Security → Microphone
+- Grant accessibility access: System Settings → Privacy & Security → Accessibility
+- *Important*: Grant to your terminal app (Terminal, Warp, VS Code, etc.)
 
 **2. "Command not found: s2t"**
-- Reinstall globally: `npm install -g speech2type`
-- Check your PATH includes npm global binaries
+- Reinstall: `npm install -g speech2type`
+- Check PATH includes npm global binaries
 
-**3. "Hotkey not working"**
-- Check for conflicts with other applications
-- Reconfigure hotkey with: `s2t config --hotkey`
-- Ensure permissions are granted
+**3. "AI commands not working"**
+- Check API key is set in GUI settings
+- Verify API key has credits in Anthropic console
+- Check internet connection
 
 **4. "Text not appearing"**
-- Ensure your deepgram api key is correct
-- Check your microphone is working
-- Check you have internet connection
-- Ensure permissions are granted
+- Verify Deepgram API key is correct
+- Check microphone is working
+- Ensure permissions granted
+- Verify internet connection
 
-**5. "Text not appearing in secure fields"**
-- This is by design - secure input fields (passwords) don't accept simulated typing
-- Speech2Type works in regular text fields only
-
-**6. "How to get a Deepgram API key?"**
+**5. "How to get a Deepgram API key?"**
 - Go to https://deepgram.com/
-- Sign up for a free account
-- Go to https://console.deepgram.com/
-- Click on "API Keys"
-- Click on "Create API Key"
-- Copy the API key
-- Run `s2t config --deepgram-api-key` and paste the API key
-
-  *The free tier includes more than 50 hours of credits. No credit card required.*
-
-FAQ: [https://speech2type.com/faq](https://speech2type.com/faq)
+- Sign up for free account (no credit card)
+- Get API key from https://console.deepgram.com/
+- Run `s2t config --deepgram-api-key` and paste key
+- *Free tier: 50+ hours of credits*
 
 ### Debug Mode
 
-Run with debug output for troubleshooting:
+Run with debug output:
 
 ```bash
 DEBUG=1 s2t start
@@ -521,65 +436,137 @@ DEBUG=1 s2t start
 
 ### Getting Help
 
-- **Documentation**: This README and inline help (`s2t --help`)
+- **Documentation**: This README and `s2t --help`
 - **Issues**: [GitHub Issues](https://github.com/jessesep/speech2type/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jessesep/speech2type/discussions)
 
-## 🗺️ Roadmap
+---
 
-Speech2Type Enhanced is evolving toward intelligent, self-learning voice control.
+## Full Command Reference
 
-### Coming Soon
-- **AI Command Understanding**: Say commands naturally, the app learns your phrases
-- **Training Mode**: "Computer learn" - teach new commands through conversation
-- **Local Speech Recognition**: Reduced latency, offline capability
-- **Per-App Profiles**: Automatic command sets based on focused application
+### Submit / Enter
 
-### Vision
-- Zero-configuration voice control that adapts to you
-- Voice-first settings and customization
-- Community-shared command libraries
+| Say | Action |
+|-----|--------|
+| "affirmative" | Press Enter |
+| "computer affirmative" | Press Enter |
+| "computer enter" | Press Enter |
+| "computer submit" | Press Enter |
 
-See the full [Roadmap Documentation](docs/roadmap/README.md) for details.
+### Undo / Delete
+
+| Say | Action |
+|-----|--------|
+| "retract" | Delete last transcribed text |
+| "computer retract" | Delete last transcribed text |
+| "computer undo" | Delete last transcribed text |
+
+*Say "retract" multiple times to undo multiple chunks (up to 20)*
+
+### Clear Input
+
+| Say | Action |
+|-----|--------|
+| "computer scratch" | Select all and delete |
+| "computer scratch all" | Select all and delete |
+| "computer scratch that" | Select all and delete |
+
+### Text-to-Speech Control
+
+| Say | Action |
+|-----|--------|
+| "computer speech on" | Enable TTS |
+| "computer speech off" | Disable TTS |
+| "silence" | Stop current TTS playback |
+
+*Hotkey: Cmd+' toggles Claude auto-speak*
+
+### Clipboard & Editing
+
+| Say | Action |
+|-----|--------|
+| "computer copy" | Copy (Cmd+C) |
+| "computer paste" | Paste (Cmd+V) |
+| "computer cut" | Cut (Cmd+X) |
+| "computer select all" | Select all (Cmd+A) |
+| "computer save" | Save (Cmd+S) |
+| "computer find" | Find (Cmd+F) |
+
+### Window Management
+
+| Say | Action |
+|-----|--------|
+| "computer new tab" | New tab (Cmd+T) |
+| "computer close tab" | Close tab (Cmd+W) |
+| "computer new window" | New window (Cmd+N) |
+
+### App Switching (Full List)
+
+Use prefixes: "focus", "switch to", "go to", "open"
+
+| Say | App |
+|-----|-----|
+| "focus terminal" | Terminal |
+| "focus chrome" / "focus google" / "focus browser" | Google Chrome |
+| "focus safari" | Safari |
+| "focus finder" / "focus files" | Finder |
+| "focus code" / "focus vs code" / "focus vscode" | Visual Studio Code |
+| "focus cursor" | Cursor |
+| "focus slack" | Slack |
+| "focus discord" | Discord |
+| "focus spotify" / "focus music" | Spotify |
+| "focus notes" | Notes |
+| "focus messages" | Messages |
+| "focus mail" / "focus email" | Mail |
+| "focus preview" | Preview |
+| "focus settings" / "focus preferences" | System Settings |
+
+### Mode Switching
+
+| Say | Mode |
+|-----|------|
+| "computer general mode" | General mode |
+| "computer music mode" / "computer ableton mode" | Music (Ableton) mode |
+| "computer power mode" / "computer claude mode" | Claude mode |
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how to get started:
+We welcome contributions! Here's how:
 
 1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes**: Follow the existing code style
-4. **Test thoroughly**: Ensure your changes work on macOS
-5. **Submit a pull request**: Describe your changes clearly
+2. **Create feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make changes**: Follow existing code style
+4. **Test thoroughly**: Ensure changes work on macOS
+5. **Submit pull request**: Describe changes clearly
 
 ### Development Guidelines
 
 - **Code style**: Follow existing JavaScript and Swift patterns
-- **Testing**: Test on multiple macOS versions when possible
+- **Testing**: Use Vitest framework, maintain >80% coverage
 - **Documentation**: Update README for new features
-- **Permissions**: Be mindful of security and privacy implications
+- **Security**: Be mindful of permissions and API key handling
 
-### Why not Whisper?
-
-Deepgram provides real-time streaming, higher accuracy, wider language support with reasonable low cost and developer-friendly APIs, allowing Speech2Type to remain native and lightweight (Speech2Type is not affiliated with Deepgram).
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🌟 Support the Project
+---
 
-If Speech2Type helps your workflow, consider:
-- Starring the repository
-- Reporting bugs and suggesting features  
-- Improving documentation
-- Contributing code
-- Sharing with others who might benefit
+## 🌟 Acknowledgments
+
+- Built on [Speech2Type](https://github.com/nicobrenner/speech2type) by Nico Brenner
+- Powered by [Deepgram](https://deepgram.com) for real-time transcription
+- AI understanding via [Anthropic Claude](https://anthropic.com)
+- TTS via [Piper](https://github.com/rhasspy/piper) neural voices
 
 ---
 
-**Speech2Type Enhanced** - If you can speak there, you can command there.
+**ONE** - If you can speak there, you can command there.
+
+*Evolving from voice typing to voice orchestration*
 
 Official website: [https://speech2type.com](https://speech2type.com)
-
-*Built with ❤️*

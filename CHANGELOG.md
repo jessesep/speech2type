@@ -1,6 +1,159 @@
 # Changelog
 
-All notable changes to Speech2Type Enhanced will be documented in this file.
+All notable changes to ONE (formerly Speech2Type Enhanced) will be documented in this file.
+
+## [Unreleased]
+
+*No unreleased changes*
+
+---
+
+## [0.7.0] - 2025-12-08 - "Foundation" 🎯
+
+**ONE v0.7 marks the transition from Speech2Type Enhanced to ONE - a voice-first AI operating layer.**
+
+### 🚀 Major Features
+
+#### AI Command Understanding
+- **Claude Haiku Integration**: Natural language command interpretation
+  - Say commands in your own words: "switch to terminal", "open my code", "ship it"
+  - AI figures out your intent automatically
+  - ~$0.00005 per command (~$0.05 per 1,000 commands)
+  - Dual-mode support: Anthropic API (fast) or Claude CLI (uses login)
+
+#### Personal Command Dictionary
+- **Auto-learning system**: High-confidence AI results automatically saved to personal dictionary
+- **Fuzzy matching**: Typos and variations work automatically (Fuse.js with 0.3 threshold)
+- **3-tier resolution**:
+  1. Exact match (dictionary lookup, <1ms)
+  2. Fuzzy match (phonetic variations, <5ms)
+  3. AI fallback (Claude Haiku, ~300ms)
+- **Stats tracking**: Monitor tier1/tier2/tier3 hit rates
+- **Personal vocabulary**: `~/.config/one/personal_commands.json`
+
+#### Secure API Key Storage
+- **macOS Keychain integration**: API keys stored securely via keytar
+- **Migration from plaintext**: Automatic migration from config.json to Keychain
+- **GUI management**: Add/delete API keys in settings window
+- **Status indicators**: Visual confirmation of Keychain storage
+
+### Added
+
+#### Core Services
+- **`src/services/intent-resolver.js`**: AI command understanding service
+  - `looksLikeCommand()` heuristic to avoid unnecessary API calls
+  - Response caching with 5-minute TTL
+  - Dual-mode: API or CLI
+
+- **`src/services/commands.js`**: Personal command dictionary
+  - Load/save personal commands
+  - Fuzzy matching with Fuse.js
+  - Auto-learning from AI results
+  - Usage statistics
+
+- **`src/services/secrets.js`**: Keychain API key storage
+  - macOS Keychain integration via keytar
+  - Secure storage and retrieval
+  - Migration utilities
+
+#### Data Files
+- **`src/data/default_commands.json`**: Default command library
+  - 30+ built-in commands
+  - Phonetic variations
+  - Action mappings
+
+#### Testing & Quality
+- **155 tests passing** with Vitest framework
+  - 35 tests: `tests/intent-resolver.test.js`
+  - 46 tests: `tests/commands.test.js`
+  - 26 tests: `tests/secrets.test.js`
+  - 12 tests: `tests/phonetic-variations.test.js`
+  - 36 tests: `tests/context-window.test.js`
+- **Test coverage**: 32% overall
+  - 100% coverage: commands.js, context-window.js
+  - 97% coverage: secrets.js
+  - 85% coverage: intent-resolver.js
+- **ESLint configuration**: Fixed and enforced
+
+### Changed
+
+#### Transcript Pipeline
+- **AI-powered fallback**: When no exact keyword match found, ONE asks AI
+- **Smart filtering**: Only checks short phrases (≤7 words) that look like commands
+- **Confidence threshold**: 70% minimum for AI command execution
+- **GUI indicators**: Shows AI status in menu bar
+
+#### Branding
+- **README rebrand**: "ONE - Voice-First AI Operating Layer"
+- **Project vision**: Evolving from voice typing to voice orchestration
+- **Roadmap published**: Phases 1-4 specifications complete
+
+### Documentation
+
+#### Planning & Architecture
+- **`.planning/one/`**: Complete Phase 1-4 specifications (10,540+ lines)
+  - `AI-COMMAND-SYSTEM.md`: AI understanding architecture
+  - `PERSONAL-DICTIONARY.md`: Dictionary and learning system
+  - `SECURE-STORAGE.md`: Security and API key management
+  - `TRAINING-MODE.md`: Phase 2 specifications
+  - `LEARNING-LOOP.md`: Auto-learning design
+  - `MULTI-AGENT-INTEGRATION.md`: Phase 4 vision
+  - `ROADMAP.md`: Complete development roadmap
+  - `VISION.md`: ONE strategic vision
+
+- **`docs/ARCHITECTURE.md`**: Comprehensive technical documentation (1,003 lines)
+- **`.planning/TEAM-STATUS.md`**: Multi-agent development coordination
+- **Updated README.md**: ONE branding, v0.7 features, roadmap
+
+#### Future Planning
+- **`.planning/future/`**: Post-v1.0 strategy (3,866+ lines)
+  - `FUTURE-VISION.md`: v2.0+ roadmap
+  - `LOCAL-PROCESSING.md`: Whisper/Moonshine integration plans
+  - `ECOSYSTEM-STRATEGY.md`: Marketplace and community
+  - `PRICING-STRATEGY.md`: Monetization model
+
+### Performance
+
+#### Latency
+- **Tier 1 (exact)**: <1ms
+- **Tier 2 (fuzzy)**: <5ms
+- **Tier 3 (AI)**: ~300ms (API), ~500ms (CLI)
+
+#### Costs
+- **Deepgram STT**: Free tier (50+ hours)
+- **Claude Haiku**: ~$0.00005 per command
+- **Total**: ~$0.05 per 1,000 commands
+
+### Migration Guide
+
+#### For Existing Users
+1. **Update to v0.7**: `npm install -g speech2type-enhanced@latest`
+2. **Add Anthropic API key** (optional):
+   - Open settings GUI
+   - Click "API" tab
+   - Enter API key → stored in Keychain
+3. **Existing commands**: All existing commands continue to work
+4. **New features**: AI understanding works automatically when API key is set
+
+#### Breaking Changes
+- None - fully backwards compatible
+
+### Known Issues
+- **Metrics tracking**: Tier 1/2/3 hit rates not yet displayed in GUI (tracked internally)
+- **Integration tests**: Partial coverage with mock API (real-world testing needed)
+- **Cost monitoring**: No dashboard yet for API usage tracking
+
+### Next Phase
+
+**Phase 2: Training Mode (v0.8)** - Coming next
+- "Computer learn" - teach new commands through conversation
+- Correction flow: "No, I meant..."
+- Workflow creation: record multi-step sequences
+- Voice feedback: "Got it, what should that do?"
+
+See [.planning/one/ROADMAP.md](.planning/one/ROADMAP.md) for full specifications.
+
+---
 
 ## [0.6.0] - 2025-12-07
 
