@@ -1,11 +1,14 @@
 /**
- * Training Mode Service (Phase 2.2)
+ * Training Mode Service (Phase 2.2 + 2.4)
  *
  * Allows users to explicitly teach ONE new commands through conversational training.
  * State machine: IDLE → LISTENING → COLLECTING → CONFIRMING → SAVING → IDLE
+ *
+ * Phase 2.4: Integrated training-voice for sound effects and natural voice prompts
  */
 
 import { commandDictionary } from './commands.js';
+import { trainingVoice } from './training-voice.js';
 
 /**
  * Training mode states
@@ -116,9 +119,8 @@ export class TrainingMode {
 
     this.setState(TrainingState.LISTENING);
 
-    if (this.onSpeak) {
-      await this.onSpeak('Training mode. What should I learn?');
-    }
+    // Play sound and speak (Phase 2.4)
+    await trainingVoice.enterTraining();
 
     // Start timeout
     this.startTimeout(TIMEOUTS.LISTENING);
@@ -138,13 +140,11 @@ export class TrainingMode {
 
     if (save && this.session) {
       await this.save();
-      if (this.onSpeak) {
-        await this.onSpeak('Learned! Training mode off.');
-      }
+      await trainingVoice.saved();
+      await trainingVoice.exitTraining();
     } else {
-      if (this.onSpeak) {
-        await this.onSpeak('Cancelled. Training mode off.');
-      }
+      await trainingVoice.cancelled();
+      // Exit sound already included in cancelled()
     }
 
     this.session = null;
@@ -249,9 +249,8 @@ export class TrainingMode {
       const response = `Got it. "${phrase}" will ${this.session.data.action_description || 'perform that action'}. Want to add other ways to say this?`;
       this.addToHistory('one', response);
 
-      if (this.onSpeak) {
-        await this.onSpeak(response);
-      }
+      await trainingVoice.understood();
+      await trainingVoice.speak(response);
 
       this.startTimeout(TIMEOUTS.COLLECTING);
     } else {
@@ -259,9 +258,7 @@ export class TrainingMode {
       const response = "I need you to say: 'When I say [phrase], do [action]'. For example: 'When I say ship it, run the deploy workflow'.";
       this.addToHistory('one', response);
 
-      if (this.onSpeak) {
-        await this.onSpeak(response);
-      }
+      await trainingVoice.needClarification(response);
 
       this.startTimeout(TIMEOUTS.LISTENING);
     }
@@ -288,9 +285,7 @@ export class TrainingMode {
     const response = 'Added. Anything else?';
     this.addToHistory('one', response);
 
-    if (this.onSpeak) {
-      await this.onSpeak(response);
-    }
+    await trainingVoice.addedVariation(response);
 
     this.startTimeout(TIMEOUTS.COLLECTING);
   }
@@ -316,9 +311,8 @@ export class TrainingMode {
     const response = `Step ${stepNum}: ${text}. Next step? Say "done" when finished.`;
     this.addToHistory('one', response);
 
-    if (this.onSpeak) {
-      await this.onSpeak(response);
-    }
+    await trainingVoice.understood();
+    await trainingVoice.speak(response);
 
     this.startTimeout(TIMEOUTS.COLLECTING);
   }
@@ -340,9 +334,7 @@ export class TrainingMode {
 
     this.addToHistory('one', summary);
 
-    if (this.onSpeak) {
-      await this.onSpeak(summary);
-    }
+    await trainingVoice.confirming(summary);
 
     this.startTimeout(TIMEOUTS.CONFIRMING);
   }
@@ -362,9 +354,7 @@ export class TrainingMode {
       const response = 'Say "confirm" to save or "cancel" to discard.';
       this.addToHistory('one', response);
 
-      if (this.onSpeak) {
-        await this.onSpeak(response);
-      }
+      await trainingVoice.needClarification(response);
 
       this.startTimeout(TIMEOUTS.CONFIRMING);
     }
@@ -422,10 +412,8 @@ export class TrainingMode {
 
     // Warning at duration - 10s
     if (duration > 10000) {
-      this.warningTimer = setTimeout(() => {
-        if (this.onSpeak) {
-          this.onSpeak('Still there?');
-        }
+      this.warningTimer = setTimeout(async () => {
+        await trainingVoice.timeoutWarning();
       }, duration - 10000);
     }
 
