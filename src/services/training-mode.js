@@ -18,6 +18,7 @@ export const TrainingState = {
   LISTENING: 'listening',                  // Waiting for training request
   COLLECTING_VARIATIONS: 'collecting_variations',  // Adding more trigger phrases
   COLLECTING_STEPS: 'collecting_steps',    // Adding workflow steps
+  RESOLVING_CONFLICT: 'resolving_conflict', // Handling phrase conflicts (Phase 2.7)
   CONFIRMING: 'confirming',                // Asking user to confirm
   SAVING: 'saving'                         // Writing to disk
 };
@@ -37,6 +38,7 @@ export const TrainingType = {
 const TIMEOUTS = {
   LISTENING: 25000,           // 25s to describe what to learn
   COLLECTING: 15000,          // 15s between variations
+  RESOLVING_CONFLICT: 20000,  // 20s to resolve conflicts (Phase 2.7)
   CONFIRMING: 20000,          // 20s to confirm or cancel
   WARNING: 15000              // Warn at 15s before timeout
 };
@@ -190,6 +192,10 @@ export class TrainingMode {
         await this.handleStep(text);
         break;
 
+      case TrainingState.RESOLVING_CONFLICT:
+        await this.handleConflictResolution(text);
+        break;
+
       case TrainingState.CONFIRMING:
         await this.handleConfirmation(text);
         break;
@@ -319,8 +325,29 @@ export class TrainingMode {
 
   /**
    * Enter confirmation state
+   * Phase 2.7: Check for conflicts first
    */
   async confirm() {
+    // Phase 2.7: Check for conflicts before confirming
+    if (this.session.type === TrainingType.SIMPLE_COMMAND) {
+      const conflicts = [];
+      for (const phrase of this.session.data.trigger_phrases) {
+        const existing = commandDictionary.getExistingCommand(phrase);
+        if (existing) {
+          conflicts.push({ phrase, existing });
+        }
+      }
+
+      if (conflicts.length > 0) {
+        // Handle conflicts
+        this.session.conflicts = conflicts;
+        this.session.conflictIndex = 0;
+        await this.handleConflict();
+        return;
+      }
+    }
+
+    // No conflicts - proceed to confirmation
     this.setState(TrainingState.CONFIRMING);
 
     let summary;
@@ -337,6 +364,82 @@ export class TrainingMode {
     await trainingVoice.confirming(summary);
 
     this.startTimeout(TIMEOUTS.CONFIRMING);
+  }
+
+  /**
+   * Handle phrase conflict (Phase 2.7)
+   */
+  async handleConflict() {
+    this.setState(TrainingState.RESOLVING_CONFLICT);
+
+    const conflict = this.session.conflicts[this.session.conflictIndex];
+    const phrase = conflict.phrase;
+    const existingAction = conflict.existing.action;
+
+    const message = `"${phrase}" is already mapped to ${existingAction}. Options: Say "replace" to override, "skip" to keep the old mapping, or "cancel" to stop training.`;
+
+    this.addToHistory('one', message);
+    await trainingVoice.needClarification(message);
+
+    this.startTimeout(TIMEOUTS.RESOLVING_CONFLICT);
+  }
+
+  /**
+   * Handle conflict resolution response (Phase 2.7)
+   */
+  async handleConflictResolution(text) {
+    const lowerText = text.toLowerCase().trim();
+    const conflict = this.session.conflicts[this.session.conflictIndex];
+
+    if (/^replace|override|change/i.test(lowerText)) {
+      // Mark this phrase for replacement
+      if (!this.session.replacements) {
+        this.session.replacements = [];
+      }
+      this.session.replacements.push(conflict.phrase);
+
+      await trainingVoice.understood(`Okay, I'll replace "${conflict.phrase}".`);
+    } else if (/^skip|keep|no/i.test(lowerText)) {
+      // Remove this phrase from the training session
+      this.session.data.trigger_phrases = this.session.data.trigger_phrases.filter(
+        p => p !== conflict.phrase
+      );
+
+      await trainingVoice.understood(`Okay, I'll skip "${conflict.phrase}".`);
+    } else if (/^cancel|stop|nevermind/i.test(lowerText)) {
+      // Cancel the entire training session
+      await this.exit(false);
+      return;
+    } else {
+      // Didn't understand - ask again
+      const message = 'Please say "replace", "skip", or "cancel".';
+      await trainingVoice.needClarification(message);
+      this.startTimeout(TIMEOUTS.RESOLVING_CONFLICT);
+      return;
+    }
+
+    // Move to next conflict or proceed to confirmation
+    this.session.conflictIndex++;
+    if (this.session.conflictIndex < this.session.conflicts.length) {
+      // More conflicts to resolve
+      await this.handleConflict();
+    } else {
+      // All conflicts resolved - check if we have any phrases left
+      if (this.session.data.trigger_phrases.length === 0) {
+        await trainingVoice.cancelled('All phrases were skipped. Training cancelled.');
+        await this.exit(false);
+      } else {
+        // Proceed to confirmation
+        this.setState(TrainingState.CONFIRMING);
+
+        const phrases = this.session.data.trigger_phrases.map(p => `"${p}"`).join(' or ');
+        const summary = `${phrases} will ${this.session.data.action_description}. Say "confirm" to save or "cancel" to discard.`;
+
+        this.addToHistory('one', summary);
+        await trainingVoice.confirming(summary);
+        this.startTimeout(TIMEOUTS.CONFIRMING);
+      }
+    }
   }
 
   /**
@@ -371,9 +474,20 @@ export class TrainingMode {
     this.setState(TrainingState.SAVING);
 
     if (this.session.type === TrainingType.SIMPLE_COMMAND) {
-      // For now, just add phrases to dictionary with a generic action
-      // In full implementation, would parse action_description to actual action
+      // Phase 2.7: Handle replacements first
+      if (this.session.replacements && this.session.replacements.length > 0) {
+        for (const phrase of this.session.replacements) {
+          await commandDictionary.replace(phrase, 'CUSTOM_ACTION', 'trained');
+          console.log(`[Training] Replaced: "${phrase}"`);
+        }
+      }
+
+      // Add new phrases (non-conflicts)
       for (const phrase of this.session.data.trigger_phrases) {
+        // Skip if it was a replacement (already handled)
+        if (this.session.replacements && this.session.replacements.includes(phrase)) {
+          continue;
+        }
         await commandDictionary.learn(phrase, 'CUSTOM_ACTION', 'trained');
       }
       console.log(`[Training] Saved ${this.session.data.trigger_phrases.length} phrase(s)`);

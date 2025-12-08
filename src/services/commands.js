@@ -260,6 +260,30 @@ export class CommandDictionary {
   }
 
   /**
+   * Check if a phrase already exists (Phase 2.7)
+   * @param {string} phrase - The phrase to check
+   * @returns {Object|null} - Existing command if found, null otherwise
+   */
+  getExistingCommand(phrase) {
+    const normalized = this.normalize(phrase);
+    return this.phraseIndex.get(normalized) || null;
+  }
+
+  /**
+   * Replace an existing phrase mapping with a new action (Phase 2.7)
+   * @param {string} phrase - The phrase to replace
+   * @param {string} newAction - The new action
+   * @param {string} source - Source: 'learned', 'trained', 'default'
+   * @returns {Promise<boolean>} - True if replaced successfully
+   */
+  async replace(phrase, newAction, source = 'trained') {
+    // First forget the old mapping
+    await this.forget(phrase);
+    // Then learn the new mapping
+    return await this.learn(phrase, newAction, source);
+  }
+
+  /**
    * Record command usage for analytics
    * @param {string} commandId
    */
