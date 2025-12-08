@@ -49,6 +49,12 @@ let currentMode = 'general';
 const CLAUDE_RESPONSE_DONE_FILE = '/tmp/claude-response-done';
 let claudeModeWatcher = null;
 
+// Focus detection - commands-only when not in text field
+let smartCommandsOnly = false; // Global setting for auto commands-only mode
+let lastFocusCheck = 0;
+let cachedIsTextInput = true; // Cache result, default to true (allow typing)
+const FOCUS_CHECK_INTERVAL = 200; // Check focus every 200ms max
+
 // Voice commands - all commands require "computer" prefix except affirmative/retract
 // GENERAL mode commands (always available)
 const GENERAL_COMMANDS = {
@@ -128,6 +134,12 @@ const GENERAL_COMMANDS = {
   // Claude Code launch
   'computer resume': 'claude_resume',
   'computer fresh': 'claude_fresh',
+
+  // Smart commands-only mode (focus detection)
+  'computer smart mode on': 'smart_commands_on',
+  'computer smart mode off': 'smart_commands_off',
+  'computer focus mode on': 'smart_commands_on',
+  'computer focus mode off': 'smart_commands_off',
 
   // Mode switching (always available) - with variations
   'computer general mode': 'mode_general',
@@ -405,6 +417,68 @@ function stopClipboardWatch() {
   }
 }
 
+// Focus detection - check if currently focused element is a text input
+let focusCheckerPath = null;
+
+function initFocusChecker(config) {
+  focusCheckerPath = join(config.projectRoot, 'bin', 'focus-checker');
+}
+
+function checkIsTextInput() {
+  // Rate limit focus checks
+  const now = Date.now();
+  if (now - lastFocusCheck < FOCUS_CHECK_INTERVAL) {
+    return cachedIsTextInput;
+  }
+  lastFocusCheck = now;
+
+  // If smart commands-only is disabled, always allow typing
+  if (!smartCommandsOnly) {
+    return true;
+  }
+
+  // If focus checker not available, default to allowing typing
+  if (!focusCheckerPath || !existsSync(focusCheckerPath)) {
+    return true;
+  }
+
+  try {
+    const { execSync } = require('child_process');
+    const result = execSync(focusCheckerPath, {
+      encoding: 'utf8',
+      timeout: 100,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    const data = JSON.parse(result);
+    cachedIsTextInput = data.isTextInput === true;
+
+    // Log when focus state changes
+    if (process.env.DEBUG) {
+      console.log(chalk.dim(`[focus] isTextInput: ${cachedIsTextInput}, role: ${data.role}, app: ${data.appName}`));
+    }
+
+    return cachedIsTextInput;
+  } catch (e) {
+    // On error, default to allowing typing
+    return true;
+  }
+}
+
+// Check if commands-only mode is active (either addon setting or smart mode)
+function isCommandsOnlyActive() {
+  // Check addon-level commands-only first
+  if (addonLoader && addonLoader.isCommandsOnly()) {
+    return true;
+  }
+
+  // Check smart commands-only (focus-based)
+  if (smartCommandsOnly && !checkIsTextInput()) {
+    return true;
+  }
+
+  return false;
+}
+
 // Strip all punctuation from text for command matching
 function stripPunctuation(text) {
   return text.replace(/[.,!?;:'"()[\]{}]/g, '').trim();
@@ -492,6 +566,16 @@ async function initializeServices(config) {
   // Load addons
   addonLoader = new AddonLoader(config.projectRoot);
   await addonLoader.loadAll();
+
+  // Initialize focus checker for smart commands-only mode
+  initFocusChecker(config);
+
+  // Load smart commands-only setting from config
+  const audioSettings = getAudioSettings();
+  smartCommandsOnly = audioSettings.smartCommandsOnly === true;
+  if (smartCommandsOnly) {
+    console.log(chalk.cyan('[focus] Smart commands-only mode enabled - will detect text inputs'));
+  }
 }
 
 // Execute a general action (keyboard shortcuts, mode switches, etc.)
@@ -596,6 +680,16 @@ async function executeGeneralAction(action) {
     case 'tts_off':
       exec('rm -f /tmp/claude-auto-speak', () => {});
       console.log(chalk.yellow('[TTS] Text-to-speech OFF'));
+      playBeep();
+      return true;
+    case 'smart_commands_on':
+      smartCommandsOnly = true;
+      console.log(chalk.cyan('[smart mode] ON - Commands only when not in text field'));
+      playBeep();
+      return true;
+    case 'smart_commands_off':
+      smartCommandsOnly = false;
+      console.log(chalk.yellow('[smart mode] OFF - Always allow typing'));
       playBeep();
       return true;
     case 'claude_resume':
@@ -931,9 +1025,12 @@ function startSession(config) {
     }
 
     // No command found - buffer the text briefly in case a command follows
-    // In commandsOnly mode (e.g., Ableton), don't type any text
-    if (addonLoader && addonLoader.isCommandsOnly()) {
-      console.log(chalk.dim(`[commands-only] Ignoring text: "${text}"`));
+    // In commandsOnly mode (addon setting or smart focus-based), don't type any text
+    if (isCommandsOnlyActive()) {
+      const reason = (addonLoader && addonLoader.isCommandsOnly())
+        ? 'addon commands-only'
+        : 'not in text field';
+      console.log(chalk.dim(`[commands-only] Ignoring text (${reason}): "${text}"`));
       return;
     }
 
@@ -1154,6 +1251,12 @@ async function startApplication(config, options = {}) {
           // GUI toggled TTS - just log the current state (file already changed by GUI)
           const ttsEnabled = existsSync('/tmp/claude-auto-speak');
           console.log(chalk.magenta(`[TTS] ${ttsEnabled ? 'ENABLED' : 'DISABLED'} (synced from GUI)`));
+        } else if (command === 'smart-commands-on') {
+          smartCommandsOnly = true;
+          console.log(chalk.cyan('[smart mode] ON - Commands only when not in text field (from GUI)'));
+        } else if (command === 'smart-commands-off') {
+          smartCommandsOnly = false;
+          console.log(chalk.yellow('[smart mode] OFF - Always allow typing (from GUI)'));
         } else if (command.startsWith('mode:')) {
           const newMode = command.split(':')[1];
           if (newMode === 'general') {
@@ -1185,7 +1288,8 @@ async function startApplication(config, options = {}) {
     const status = {
       listening: sessionActive,
       mode: currentMode,
-      tts: existsSync('/tmp/claude-auto-speak')
+      tts: existsSync('/tmp/claude-auto-speak'),
+      smartCommandsOnly: smartCommandsOnly
     };
     writeFileSync('/tmp/s2t-status.json', JSON.stringify(status));
   };

@@ -47,7 +47,7 @@
   },
   "scripts": {
     "start": "./bin/speech2type.js",
-    "build:swift": "mkdir -p bin && swiftc -O -o bin/hotkey-manager swift/hotkey-manager.swift && swiftc -O -o bin/permission-checker swift/permission-checker.swift && swiftc -O -o bin/mic-recorder swift/mic-recorder.swift",
+    "build:swift": "mkdir -p bin && swiftc -O -o bin/hotkey-manager swift/hotkey-manager.swift && swiftc -O -o bin/permission-checker swift/permission-checker.swift && swiftc -O -o bin/mic-recorder swift/mic-recorder.swift && swiftc -O -o bin/focus-checker swift/focus-checker.swift",
     "build": "npm run build:swift",
     "dev": "npm run build && ./bin/speech2type.js",
     "gui": "electron gui/main.cjs",
