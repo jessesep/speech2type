@@ -2826,8 +2826,33 @@
     async function loadCommands() {
       const container = document.getElementById('commandsContainer');
       const addons = await ipcRenderer.invoke('get-addons');
+      const learnedData = await ipcRenderer.invoke('get-learned-commands');
 
       let html = '';
+
+      // Learned Commands section (show first, expanded by default if has commands)
+      if (learnedData.commands && learnedData.commands.length > 0) {
+        const learnedCommands = learnedData.commands.map(cmd => {
+          // Flatten phrases into individual command items
+          return cmd.phrases.map(phrase => ({
+            phrase,
+            action: cmd.action,
+            commandId: cmd.id,
+            confidence: cmd.confidence,
+            useCount: cmd.use_count || 0,
+            source: cmd.source,
+            isLearned: true
+          }));
+        }).flat();
+
+        const section = {
+          editable: false,
+          prefix: '',  // Learned commands don't use "computer" prefix
+          commands: learnedCommands,
+          stats: learnedData.stats
+        };
+        html += renderLearnedCommandSection('Learned Commands', section, false);
+      }
 
       // Built-in command sections - only Core Commands expanded by default
       for (const [sectionName, section] of Object.entries(builtInCommands)) {
@@ -2884,6 +2909,75 @@
           }
         });
       });
+
+      // Attach delete handlers for learned commands
+      container.querySelectorAll('.learned-command .custom-command-delete-bg').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const commandId = btn.dataset.commandId;
+          if (commandId && confirm('Forget this command? It will be removed from your learned commands.')) {
+            const result = await ipcRenderer.invoke('remove-learned-command', commandId);
+            if (result.success) {
+              showToast('Command forgotten');
+              loadCommands();  // Reload to show updated list
+            } else {
+              showToast('Failed to remove command: ' + (result.error || 'Unknown error'));
+            }
+          }
+        });
+      });
+    }
+
+    function renderLearnedCommandSection(name, section, collapsed = false) {
+      const phraseCount = section.commands.length;
+      const commandCount = [...new Set(section.commands.map(c => c.action))].length;
+      const collapsedClass = collapsed ? ' collapsed' : '';
+
+      const statsHtml = section.stats ? `
+        <div style="font-size: 10px; color: #737373; margin-top: 4px;">
+          ${commandCount} actions • ${phraseCount} phrases • ${section.stats.tier1_hits || 0} exact hits
+        </div>
+      ` : '';
+
+      const commandsHtml = section.commands.map(cmd => {
+        const confidenceBadge = cmd.confidence
+          ? `<span style="color: ${cmd.confidence > 0.8 ? '#4ade80' : cmd.confidence > 0.5 ? '#eab308' : '#ef4444'}; font-size: 9px; opacity: 0.7;">●</span>`
+          : '';
+        const sourceLabel = cmd.source === 'trained' ? ' [trained]' : '';
+        return `
+        <div class="command-item learned-command" data-command-id="${cmd.commandId}">
+          <span class="command-phrase">
+            ${cmd.phrase} ${confidenceBadge}${sourceLabel}
+          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="command-action">${cmd.action}</span>
+            <button class="custom-command-delete-bg" data-command-id="${cmd.commandId}" title="Forget this command" style="background: none; border: none; color: #8a8a8a; padding: 2px 4px; font-size: 11px;">×</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      return `
+        <div class="command-section${collapsedClass}">
+          <div class="command-section-header">
+            <div class="command-section-title">
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <div>
+                <span>${name}</span>
+                <span class="command-count">${phraseCount}</span>
+                ${statsHtml}
+              </div>
+            </div>
+          </div>
+          <div class="command-section-content">
+            <div class="command-section-content-inner">
+              ${commandsHtml}
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function renderCommandSection(name, section, addonName, collapsed = false) {

@@ -1613,9 +1613,68 @@ function startStateWatcher() {
   }, 300);
 }
 
+/**
+ * Get learned commands from personal_commands.json
+ */
+function getLearnedCommands() {
+  try {
+    const personalCommandsPath = path.join(require('os').homedir(), '.config', 'one', 'personal_commands.json');
+    if (fs.existsSync(personalCommandsPath)) {
+      const data = JSON.parse(fs.readFileSync(personalCommandsPath, 'utf8'));
+      return {
+        commands: data.commands || [],
+        stats: data.stats || {}
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load learned commands:', e);
+  }
+  return { commands: [], stats: {} };
+}
+
+/**
+ * Remove a learned command by ID
+ */
+function removeLearnedCommand(commandId) {
+  try {
+    const personalCommandsPath = path.join(require('os').homedir(), '.config', 'one', 'personal_commands.json');
+    if (!fs.existsSync(personalCommandsPath)) {
+      return { success: false, error: 'No learned commands file found' };
+    }
+
+    const data = JSON.parse(fs.readFileSync(personalCommandsPath, 'utf8'));
+    const initialLength = data.commands.length;
+    data.commands = data.commands.filter(cmd => cmd.id !== commandId);
+
+    if (data.commands.length === initialLength) {
+      return { success: false, error: 'Command not found' };
+    }
+
+    // Update stats
+    if (data.stats) {
+      data.stats.total_commands = data.commands.length;
+      const totalPhrases = data.commands.reduce((sum, cmd) => sum + (cmd.phrases?.length || 0), 0);
+      data.stats.total_phrases = totalPhrases;
+    }
+
+    data.updated_at = new Date().toISOString();
+    fs.writeFileSync(personalCommandsPath, JSON.stringify(data, null, 2));
+
+    // Notify backend to reload
+    fs.writeFileSync('/tmp/s2t-gui-command', 'reload-commands');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to remove learned command:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // IPC handlers for settings window
 ipcMain.handle('get-config', () => loadConfig());
 ipcMain.handle('save-config', (event, config) => saveConfig(config));
+ipcMain.handle('get-learned-commands', () => getLearnedCommands());
+ipcMain.handle('remove-learned-command', (event, commandId) => removeLearnedCommand(commandId));
 ipcMain.handle('get-state', () => ({
   isListening,
   isServiceRunning,
