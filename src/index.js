@@ -55,6 +55,12 @@ let lastFocusCheck = 0;
 let cachedIsTextInput = true; // Cache result, default to true (allow typing)
 const FOCUS_CHECK_INTERVAL = 200; // Check focus every 200ms max
 
+// Reset focus cache - call when smart mode changes to force fresh check
+function resetFocusCache() {
+  lastFocusCheck = 0;
+  cachedIsTextInput = true;
+}
+
 // Voice commands - all commands require "computer" prefix except affirmative/retract
 // GENERAL mode commands (always available)
 const GENERAL_COMMANDS = {
@@ -723,11 +729,13 @@ async function executeGeneralAction(action) {
       return true;
     case 'smart_commands_on':
       smartCommandsOnly = true;
+      resetFocusCache();
       console.log(chalk.cyan('[smart mode] ON - Commands only when not in text field'));
       playBeep();
       return true;
     case 'smart_commands_off':
       smartCommandsOnly = false;
+      resetFocusCache();
       console.log(chalk.yellow('[smart mode] OFF - Always allow typing'));
       playBeep();
       return true;
@@ -1292,9 +1300,11 @@ async function startApplication(config, options = {}) {
           console.log(chalk.magenta(`[TTS] ${ttsEnabled ? 'ENABLED' : 'DISABLED'} (synced from GUI)`));
         } else if (command === 'smart-commands-on') {
           smartCommandsOnly = true;
+          resetFocusCache();
           console.log(chalk.cyan('[smart mode] ON - Commands only when not in text field (from GUI)'));
         } else if (command === 'smart-commands-off') {
           smartCommandsOnly = false;
+          resetFocusCache();
           console.log(chalk.yellow('[smart mode] OFF - Always allow typing (from GUI)'));
         } else if (command.startsWith('mode:')) {
           const newMode = command.split(':')[1];
