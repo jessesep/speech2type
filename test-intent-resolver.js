@@ -2,34 +2,36 @@
 /**
  * Test script for IntentResolver
  * Tests the Claude-powered command understanding
+ *
+ * Usage:
+ *   node test-intent-resolver.js              # Auto-detect (API if key, else CLI)
+ *   node test-intent-resolver.js --cli        # Force Claude CLI mode
+ *   node test-intent-resolver.js --api        # Force API mode (requires key)
+ *   node test-intent-resolver.js -i           # Interactive mode
+ *   node test-intent-resolver.js -t           # Run test phrases
  */
 
-import { IntentResolver } from './src/services/intent-resolver.js';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
+import createIntentResolver from './src/services/intent-resolver.js';
 import readline from 'readline';
 
-// Load API key from config
-const configPath = join(homedir(), '.config', 'speech2type', 'config.json');
-let apiKey = process.env.ANTHROPIC_API_KEY;
+// Parse args
+const args = process.argv.slice(2);
+const forceMode = args.includes('--cli') ? 'cli' : args.includes('--api') ? 'api' : undefined;
+const interactive = args.includes('--interactive') || args.includes('-i');
+const runTests = args.includes('--test') || args.includes('-t');
 
-if (!apiKey && existsSync(configPath)) {
-  try {
-    const config = JSON.parse(readFileSync(configPath, 'utf8'));
-    apiKey = config.anthropicApiKey;
-  } catch (e) {
-    // ignore
-  }
-}
-
-if (!apiKey) {
-  console.error('Error: ANTHROPIC_API_KEY environment variable or config.anthropicApiKey required');
-  console.error('Set it with: export ANTHROPIC_API_KEY=your-key');
+// Create resolver
+let resolver;
+try {
+  resolver = createIntentResolver({ mode: forceMode });
+  console.log(`Using ${resolver.mode.toUpperCase()} mode\n`);
+} catch (e) {
+  console.error('Error:', e.message);
+  console.error('\nOptions:');
+  console.error('  --cli   Use Claude CLI (requires claude command, uses your login)');
+  console.error('  --api   Use Anthropic API (requires ANTHROPIC_API_KEY env var)');
   process.exit(1);
 }
-
-const resolver = new IntentResolver(apiKey);
 
 // Test phrases
 const testPhrases = [
@@ -70,7 +72,7 @@ const testPhrases = [
   'fix that'
 ];
 
-async function runTests() {
+async function runTestPhrases() {
   console.log('=== Intent Resolver Test ===\n');
   console.log('Testing', testPhrases.length, 'phrases...\n');
 
@@ -91,6 +93,7 @@ async function runTests() {
 
   console.log('\n=== Statistics ===');
   const stats = resolver.getStats();
+  console.log(`Mode: ${stats.mode}`);
   console.log(`API calls: ${stats.calls}`);
   console.log(`Cache hits: ${stats.cacheHits}`);
   console.log(`Cache hit rate: ${stats.cacheHitRate}%`);
@@ -105,13 +108,14 @@ async function interactiveMode() {
   });
 
   console.log('\n=== Interactive Mode ===');
+  console.log(`Mode: ${resolver.mode.toUpperCase()}`);
   console.log('Type phrases to test. Type "quit" to exit, "stats" for statistics.\n');
 
   const prompt = () => {
     rl.question('> ', async (input) => {
       const trimmed = input.trim();
 
-      if (trimmed === 'quit' || trimmed === 'exit') {
+      if (trimmed === 'quit' || trimmed === 'exit' || trimmed === 'q') {
         console.log('\nFinal stats:', resolver.getStats());
         rl.close();
         return;
@@ -125,6 +129,7 @@ async function interactiveMode() {
 
       if (trimmed) {
         try {
+          console.log('  Thinking...');
           const result = await resolver.resolve(trimmed);
           const confidence = Math.round(result.confidence * 100);
           const target = result.target ? ` → ${result.target}` : '';
@@ -142,16 +147,20 @@ async function interactiveMode() {
   prompt();
 }
 
-// Run tests then interactive mode
-const args = process.argv.slice(2);
-if (args.includes('--interactive') || args.includes('-i')) {
+// Main
+if (interactive) {
   interactiveMode();
-} else if (args.includes('--test') || args.includes('-t')) {
-  runTests();
-} else {
+} else if (runTests) {
+  runTestPhrases();
+} else if (args.length === 0 || forceMode) {
+  // Default: run tests then interactive
   console.log('Usage:');
   console.log('  node test-intent-resolver.js --test        Run test phrases');
   console.log('  node test-intent-resolver.js --interactive Interactive mode');
+  console.log('  node test-intent-resolver.js --cli         Force CLI mode');
+  console.log('  node test-intent-resolver.js --api         Force API mode');
   console.log('');
-  runTests().then(() => interactiveMode());
+  runTestPhrases().then(() => interactiveMode());
+} else {
+  runTestPhrases().then(() => interactiveMode());
 }

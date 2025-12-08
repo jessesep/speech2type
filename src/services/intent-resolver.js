@@ -1,13 +1,17 @@
 /**
  * Intent Resolver Service
  *
- * Uses Claude Haiku to interpret natural speech into structured actions.
- * Minimal, fast, and cheap - designed for real-time voice command understanding.
+ * Uses Claude to interpret natural speech into structured actions.
+ * Supports two modes:
+ *   1. Direct API (requires ANTHROPIC_API_KEY) - faster, billed separately
+ *   2. Claude CLI (uses your Claude Code login) - uses existing auth
  *
- * Cost: ~$0.00005 per call (Haiku pricing)
+ * Cost with API: ~$0.00005 per call (Haiku pricing)
+ * Cost with CLI: Uses your Claude Code subscription/credits
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { spawn } from 'child_process';
 
 // Core actions the system can perform
 const CORE_ACTIONS = {
@@ -91,12 +95,21 @@ User: "go to safari" → {"action": "focus_app", "confidence": 0.9, "target": "s
 User: "I need to write an email" → {"action": "none", "confidence": 0.85}
 User: "blargblarg" → {"action": "unknown", "confidence": 0.1}`;
 
+/**
+ * IntentResolver using direct Anthropic API
+ * Requires: ANTHROPIC_API_KEY environment variable or passed apiKey
+ */
 class IntentResolver {
   constructor(apiKey) {
     if (!apiKey) {
-      throw new Error('Anthropic API key required for IntentResolver');
+      throw new Error('Anthropic API key required for IntentResolver. Use IntentResolverCLI for Claude Code auth.');
     }
     this.client = new Anthropic({ apiKey });
+    this.mode = 'api';
+    this._initCommon();
+  }
+
+  _initCommon() {
     this.cache = new Map();
     this.cacheMaxSize = 100;
     this.stats = {
@@ -148,26 +161,15 @@ class IntentResolver {
 
       // Parse response
       const text = response.content[0]?.text || '{}';
-      let result;
-
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        // Try to extract JSON from response
-        const jsonMatch = text.match(/\{[^}]+\}/);
-        if (jsonMatch) {
-          result = JSON.parse(jsonMatch[0]);
-        } else {
-          result = { action: 'unknown', confidence: 0 };
-        }
-      }
+      const result = this._parseResponse(text);
 
       // Validate and normalize result
       const normalized = {
         action: CORE_ACTIONS[result.action?.toUpperCase()] || result.action || 'unknown',
         confidence: Math.min(1, Math.max(0, result.confidence || 0.5)),
         target: result.target || null,
-        latencyMs: latency
+        latencyMs: latency,
+        mode: this.mode
       };
 
       // Cache result
@@ -182,8 +184,22 @@ class IntentResolver {
       return {
         action: 'unknown',
         confidence: 0,
-        error: error.message
+        error: error.message,
+        mode: this.mode
       };
+    }
+  }
+
+  _parseResponse(text) {
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // Try to extract JSON from response
+      const jsonMatch = text.match(/\{[^}]+\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return { action: 'unknown', confidence: 0 };
     }
   }
 
@@ -217,6 +233,7 @@ class IntentResolver {
   getStats() {
     return {
       ...this.stats,
+      mode: this.mode,
       cacheSize: this.cache.size,
       avgLatencyMs: this.stats.calls > 0
         ? Math.round(this.stats.totalLatency / this.stats.calls)
@@ -241,6 +258,218 @@ class IntentResolver {
   }
 }
 
-// Export both the class and action constants
-export { IntentResolver, CORE_ACTIONS };
-export default IntentResolver;
+/**
+ * IntentResolver using Claude CLI (claude command)
+ * Uses your existing Claude Code authentication - no API key needed
+ */
+class IntentResolverCLI {
+  constructor() {
+    this.mode = 'cli';
+    this.cache = new Map();
+    this.cacheMaxSize = 100;
+    this.stats = {
+      calls: 0,
+      cacheHits: 0,
+      errors: 0,
+      totalLatency: 0
+    };
+  }
+
+  /**
+   * Resolve user speech to an action using Claude CLI
+   * @param {string} speech - The transcribed user speech
+   * @param {object} context - Optional context (app name, mode, etc.)
+   * @returns {Promise<{action: string, confidence: number, target?: string}>}
+   */
+  async resolve(speech, context = {}) {
+    const normalizedSpeech = speech.toLowerCase().trim();
+
+    // Check cache first
+    const cacheKey = this._getCacheKey(normalizedSpeech, context);
+    if (this.cache.has(cacheKey)) {
+      this.stats.cacheHits++;
+      return this.cache.get(cacheKey);
+    }
+
+    const startTime = Date.now();
+    this.stats.calls++;
+
+    try {
+      const contextHint = context.appName
+        ? `Context: User is in ${context.appName}. `
+        : '';
+
+      const prompt = `${SYSTEM_PROMPT}\n\n${contextHint}User said: "${speech}"`;
+
+      const response = await this._runClaude(prompt);
+      const latency = Date.now() - startTime;
+      this.stats.totalLatency += latency;
+
+      // Parse response
+      const result = this._parseResponse(response);
+
+      // Validate and normalize result
+      const normalized = {
+        action: CORE_ACTIONS[result.action?.toUpperCase()] || result.action || 'unknown',
+        confidence: Math.min(1, Math.max(0, result.confidence || 0.5)),
+        target: result.target || null,
+        latencyMs: latency,
+        mode: this.mode
+      };
+
+      // Cache result
+      this._addToCache(cacheKey, normalized);
+
+      return normalized;
+
+    } catch (error) {
+      this.stats.errors++;
+      console.error('[intent-resolver-cli] Error:', error.message);
+
+      return {
+        action: 'unknown',
+        confidence: 0,
+        error: error.message,
+        mode: this.mode
+      };
+    }
+  }
+
+  /**
+   * Run claude CLI with a prompt
+   * @param {string} prompt
+   * @returns {Promise<string>}
+   */
+  _runClaude(prompt) {
+    return new Promise((resolve, reject) => {
+      // Use claude CLI in print mode (non-interactive, just returns response)
+      const claude = spawn('claude', ['-p', prompt, '--model', 'claude-3-haiku-20240307'], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 30000
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      claude.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      claude.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      claude.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout.trim());
+        } else {
+          reject(new Error(stderr || `Claude CLI exited with code ${code}`));
+        }
+      });
+
+      claude.on('error', (err) => {
+        reject(new Error(`Failed to run claude CLI: ${err.message}`));
+      });
+    });
+  }
+
+  _parseResponse(text) {
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // Try to extract JSON from response
+      const jsonMatch = text.match(/\{[^}]+\}/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (e2) {
+          // ignore
+        }
+      }
+      return { action: 'unknown', confidence: 0 };
+    }
+  }
+
+  looksLikeCommand(speech) {
+    const lower = speech.toLowerCase().trim();
+    if (lower.split(' ').length <= 4) {
+      const commandPatterns = [
+        /^(go|open|switch|focus|close|new|stop|start|send|submit|undo|clear|copy|paste|cut|select|scroll|mute|volume)/,
+        /^(do|make|set|turn|toggle|enable|disable)/,
+        /(please|now|it|this|that)$/,
+        /^(okay|ok|hey|hi|yo)\s/
+      ];
+      return commandPatterns.some(p => p.test(lower));
+    }
+    return false;
+  }
+
+  getStats() {
+    return {
+      ...this.stats,
+      mode: this.mode,
+      cacheSize: this.cache.size,
+      avgLatencyMs: this.stats.calls > 0
+        ? Math.round(this.stats.totalLatency / this.stats.calls)
+        : 0,
+      cacheHitRate: this.stats.calls > 0
+        ? Math.round((this.stats.cacheHits / (this.stats.calls + this.stats.cacheHits)) * 100)
+        : 0
+    };
+  }
+
+  _getCacheKey(speech, context) {
+    return `${speech}|${context.appName || ''}`;
+  }
+
+  _addToCache(key, value) {
+    if (this.cache.size >= this.cacheMaxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+    this.cache.set(key, value);
+  }
+}
+
+/**
+ * Factory function to create the appropriate resolver
+ * @param {object} options
+ * @param {string} options.apiKey - Anthropic API key (optional)
+ * @param {string} options.mode - 'api' or 'cli' (default: auto-detect)
+ * @returns {IntentResolver|IntentResolverCLI}
+ */
+function createIntentResolver(options = {}) {
+  const { apiKey, mode } = options;
+
+  // Explicit mode selection
+  if (mode === 'cli') {
+    return new IntentResolverCLI();
+  }
+
+  if (mode === 'api') {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+    if (!key) {
+      throw new Error('API mode requires ANTHROPIC_API_KEY environment variable or apiKey option');
+    }
+    return new IntentResolver(key);
+  }
+
+  // Auto-detect: prefer API if key available, otherwise CLI
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (key) {
+    return new IntentResolver(key);
+  }
+
+  // Fall back to CLI
+  return new IntentResolverCLI();
+}
+
+// Export everything
+export {
+  IntentResolver,
+  IntentResolverCLI,
+  createIntentResolver,
+  CORE_ACTIONS
+};
+
+export default createIntentResolver;
