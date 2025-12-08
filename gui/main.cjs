@@ -34,6 +34,7 @@ let isServiceRunning = false;
 let currentMode = 'general';
 let ttsEnabled = false;
 let isSpeaking = false;
+let smartModeEnabled = false;
 
 // Animation state
 let animationInterval = null;
@@ -1196,6 +1197,13 @@ function buildContextMenu() {
       checked: ttsEnabled,
       click: toggleTTS
     },
+    {
+      label: 'Smart Mode',
+      type: 'checkbox',
+      checked: smartModeEnabled,
+      click: toggleSmartMode,
+      enabled: isServiceRunning
+    },
     { type: 'separator' },
     {
       label: isServiceRunning ? 'Restart Service' : 'Start Service',
@@ -1301,6 +1309,24 @@ function toggleTTS() {
   // Notify settings window if open
   if (settingsWindow) {
     settingsWindow.webContents.send('tts-changed', ttsEnabled);
+  }
+}
+
+/**
+ * Toggle Smart Mode (commands-only when not in text field)
+ */
+function toggleSmartMode() {
+  smartModeEnabled = !smartModeEnabled;
+
+  // Notify backend
+  sendCommand(smartModeEnabled ? 'smart-commands-on' : 'smart-commands-off');
+
+  console.log(`Smart Mode: ${smartModeEnabled ? 'enabled' : 'disabled'} (GUI)`);
+  tray.setContextMenu(buildContextMenu());
+
+  // Notify settings window if open
+  if (settingsWindow) {
+    settingsWindow.webContents.send('smart-mode-changed', smartModeEnabled);
   }
 }
 
@@ -1486,6 +1512,11 @@ function startStateWatcher() {
 
         // Sync TTS from actual file, not status.json (more reliable)
         ttsEnabled = fs.existsSync(TTS_CONTROL_FILE);
+
+        // Sync smart mode from status
+        if (status.smartCommandsOnly !== undefined) {
+          smartModeEnabled = status.smartCommandsOnly;
+        }
       }
     } catch (e) {
       // Ignore read errors
@@ -1507,7 +1538,8 @@ function startStateWatcher() {
           isListening,
           isServiceRunning,
           currentMode,
-          ttsEnabled
+          ttsEnabled,
+          smartModeEnabled
         });
       }
     }
@@ -1644,6 +1676,12 @@ ipcMain.on('set-mode', (event, mode) => setMode(mode));
 ipcMain.on('set-tts', (event, enabled) => {
   console.log('Received set-tts:', enabled, 'current:', ttsEnabled);
   toggleTTS();
+});
+ipcMain.on('set-smart-mode', (event, enabled) => {
+  console.log('Received set-smart-mode:', enabled, 'current:', smartModeEnabled);
+  if (enabled !== smartModeEnabled) {
+    toggleSmartMode();
+  }
 });
 ipcMain.on('start-service', () => startS2T());
 ipcMain.on('stop-service', () => stopS2T());

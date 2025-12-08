@@ -844,6 +844,16 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Smart Mode</div>
+          <div class="setting-description">Commands only when not in a text field</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="smartModeToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <h2>Settings</h2>
@@ -1497,6 +1507,12 @@
     document.getElementById('ttsToggle').addEventListener('change', (e) => {
       console.log('Sending set-tts:', e.target.checked);
       ipcRenderer.send('set-tts', e.target.checked);
+    });
+
+    // Smart Mode toggle
+    document.getElementById('smartModeToggle').addEventListener('change', (e) => {
+      console.log('Sending set-smart-mode:', e.target.checked);
+      ipcRenderer.send('set-smart-mode', e.target.checked);
     });
 
     // Advanced mode toggle
@@ -2449,6 +2465,10 @@
       document.getElementById('ttsToggle').checked = enabled;
     });
 
+    ipcRenderer.on('smart-mode-changed', (event, enabled) => {
+      document.getElementById('smartModeToggle').checked = enabled;
+    });
+
     ipcRenderer.on('listening-changed', (event, listening) => {
       // Update service status when listening state changes
       updateServiceStatus(true, listening);  // Service is running if we get this event
@@ -2466,6 +2486,11 @@
 
       // Update TTS toggle
       document.getElementById('ttsToggle').checked = state.ttsEnabled;
+
+      // Update Smart Mode toggle
+      if (state.smartModeEnabled !== undefined) {
+        document.getElementById('smartModeToggle').checked = state.smartModeEnabled;
+      }
     });
 
     // Command sections data - comprehensive list of all commands
