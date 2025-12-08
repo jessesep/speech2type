@@ -1197,13 +1197,6 @@ function buildContextMenu() {
       checked: ttsEnabled,
       click: toggleTTS
     },
-    {
-      label: 'Smart Mode',
-      type: 'checkbox',
-      checked: smartModeEnabled,
-      click: toggleSmartMode,
-      enabled: isServiceRunning
-    },
     { type: 'separator' },
     {
       label: isServiceRunning ? 'Restart Service' : 'Start Service',
