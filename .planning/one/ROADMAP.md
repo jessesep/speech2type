@@ -110,58 +110,67 @@
 - `.planning/one/LEARNING-LOOP.md` - How learning/corrections flow
 - `.planning/one/TRAINING-UX.md` - Voice/audio/visual UX design
 
-### 2.1 Learning Loop Integration
-- [ ] Create `src/services/learning-loop.js`
-- [ ] Implicit positive feedback (no correction = success)
-- [ ] Implicit negative feedback (undo/wrong detection)
-- [ ] Confidence dynamics (boost/decay)
-- [ ] Context window for recent activity
+### 2.1 Learning Loop Integration ✅ DONE
+- [x] Create `src/services/learning-loop.js`
+- [x] Implicit positive feedback (no correction = success)
+- [x] Implicit negative feedback (undo/wrong detection)
+- [x] Confidence dynamics (boost/decay)
+- [x] Context window for recent activity
 
 **Files:** `src/services/learning-loop.js`, `src/services/context-window.js`
 **Owner:** builder
 **Spec:** `.planning/one/LEARNING-LOOP.md`
+**Status:** Completed by builder (2025-12-08)
 
-### 2.2 Training Mode State Machine
-- [ ] Create `src/services/training-mode.js`
-- [ ] States: IDLE → LISTENING → COLLECTING → CONFIRMING → SAVING
-- [ ] Conversation history buffer
-- [ ] Timeout handling (15s warning, 25s cancel)
-- [ ] Draft persistence (survive crashes)
+### 2.2 Training Mode State Machine ✅ DONE
+- [x] Create `src/services/training-mode.js`
+- [x] States: IDLE → LISTENING → COLLECTING → CONFIRMING → SAVING
+- [x] Conversation history buffer
+- [x] Timeout handling (15s warning, 25s cancel)
+- [x] Draft persistence (survive crashes)
 
 **Files:** `src/services/training-mode.js`
 **Owner:** builder
 **Spec:** `.planning/one/TRAINING-MODE.md`
+**Status:** Completed by builder (2025-12-08)
 
-### 2.3 Training Commands
-- [ ] "Computer learn" → enter training
-- [ ] "Confirm" / "Cancel" → save/discard
-- [ ] "Done" → finish adding variations
-- [ ] "Forget [phrase]" → remove learned command
-- [ ] "What does [phrase] do?" → explain mapping
-- [ ] "What have I taught you?" → list learned
+### 2.3 Training Commands ✅ DONE
+- [x] "Computer learn" → enter training
+- [x] "Confirm" / "Cancel" → save/discard
+- [x] "Done" → finish adding variations
+- [x] "Forget [phrase]" → remove learned command
+- [x] "What does [phrase] do?" → explain mapping
+- [x] "What have I taught you?" → list learned
 
-**Files:** `src/index.js` (GENERAL_COMMANDS)
+**Files:** `src/index.js` (GENERAL_COMMANDS), `src/data/default_commands.json`
 **Owner:** builder
+**Status:** Completed by builder (2025-12-08)
 
-### 2.4 Training Voice/Audio Feedback
-- [ ] Sound palette (8 distinct sounds)
-- [ ] Voice prompts (natural, concise)
-- [ ] 150ms pause before speaking (feels natural)
-- [ ] Interruption handling
+### 2.4 Training Voice/Audio Feedback ✅ DONE
+- [x] Sound palette (8 distinct sounds using macOS system sounds)
+- [x] Voice prompts (natural, concise)
+- [x] 150ms pause before speaking (feels natural)
+- [x] Interruption handling (killall say)
+- [x] TTS lock file to prevent mic pickup during speech
+- [x] 16 convenience methods for training scenarios
 
-**Files:** `src/services/training-voice.js`, `src/data/training-sounds/`
+**Files:** `src/services/training-voice.js`, `src/services/training-mode.js`
 **Owner:** builder
 **Spec:** `.planning/one/TRAINING-UX.md`
+**Status:** Completed by builder (2025-12-08)
 
-### 2.5 Correction Flow
-- [ ] Detect correction patterns ("no, I meant...")
-- [ ] Ask what user meant if just "no/wrong"
-- [ ] Update both wrong and right mappings
-- [ ] Confirmation before saving correction
+### 2.5 Correction Flow ✅ DONE
+- [x] Detect correction patterns ("no, I meant...")
+- [x] Ask what user meant if just "no/wrong"
+- [x] Update both wrong and right mappings
+- [x] Confirmation before saving correction
+- [x] Automatic resolution of intended action using IntentResolver
+- [x] applyCorrection() method for complete correction workflow
 
-**Files:** `src/services/learning-loop.js`
+**Files:** `src/services/learning-loop.js`, `src/index.js`
 **Owner:** builder
 **Spec:** `.planning/one/LEARNING-LOOP.md`
+**Status:** Completed by builder (2025-12-08)
 
 ### 2.6 Workflow Creation
 - [ ] Multi-step workflow recording
@@ -179,22 +188,35 @@
 
 **Owner:** builder
 
-### 2.8 Visual Feedback (Menu Bar)
-- [ ] Purple/magenta icon during training
-- [ ] Pulse animation while listening
-- [ ] Green flash on success
-- [ ] Red flash on error
-- [ ] Tooltip shows current training state
+### 2.8 Visual Feedback (Menu Bar) ✅ DONE
+- [x] Purple/magenta icon during training
+- [x] Pulse animation while listening
+- [x] Green flash on success
+- [x] Red flash on error
+- [x] Tooltip shows current training state
+- [x] Detailed tooltip showing phrase → action being taught
+- [x] IPC handlers for flash triggers and training details
 
 **Files:** `gui/main.cjs`
 **Owner:** builder
 **Spec:** `.planning/one/TRAINING-UX.md`
+**Status:** Completed by builder (2025-12-08)
 
-### Milestone: ONE v0.8.0 Release
-- Full training mode
-- Workflow creation
-- Conflict resolution
-- "Computer learn" works end-to-end
+### Milestone: ONE v0.8.0 Release (🟢 NEAR COMPLETE)
+
+**Completed (2025-12-08):**
+- ✅ 2.1 Learning Loop Integration
+- ✅ 2.2 Training Mode State Machine
+- ✅ 2.3 Training Commands
+- ✅ 2.4 Training Voice/Audio Feedback
+- ✅ 2.5 Correction Flow
+
+**Remaining:**
+- ⏳ 2.6 Workflow Creation (optional - can defer to v0.8.1)
+- ⏳ 2.7 Conflict Resolution
+- ⏳ 2.8 Visual Feedback (Menu Bar)
+
+**Status:** Phase 2 is 62.5% complete (5/8 tasks done). Core training and correction flows are fully working. Remaining tasks are polish and advanced features.
 
 ---
 
@@ -463,4 +485,5 @@
 
 ---
 
-*Last updated: 2025-12-08 by thinker*
+*Last updated: 2025-12-08 23:59 UTC by thinker*
+*Phase 2.1-2.5 marked complete - correction flow now working!*
