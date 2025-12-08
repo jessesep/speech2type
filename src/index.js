@@ -1,4 +1,4 @@
-import { exec, execFile } from 'child_process';
+import { exec, execFile, execSync } from 'child_process';
 
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -439,26 +439,65 @@ function checkIsTextInput() {
 
   // If focus checker not available, default to allowing typing
   if (!focusCheckerPath || !existsSync(focusCheckerPath)) {
+    console.log(chalk.yellow(`[focus] focus-checker not found at ${focusCheckerPath}`));
     return true;
   }
 
   try {
-    const { execSync } = require('child_process');
     const result = execSync(focusCheckerPath, {
       encoding: 'utf8',
       timeout: 100,
       stdio: ['pipe', 'pipe', 'pipe']
     });
     const data = JSON.parse(result);
+
+    // Check for accessibility permission error
+    if (data.error === 'accessibility_not_granted') {
+      console.log(chalk.yellow(`[focus] Accessibility permission needed for Speech2Type`));
+      console.log(chalk.yellow(`[focus] Grant permission in System Settings > Privacy & Security > Accessibility`));
+      console.log(chalk.dim(`[focus] Frontmost app: ${data.appName || 'unknown'}`));
+      // Disable smart mode automatically when accessibility isn't available
+      smartCommandsOnly = false;
+      return true;
+    }
+
+    // Check for permission error on the focused element (can still get app name)
+    if (data.error === 'accessibility_permission_needed') {
+      console.log(chalk.yellow(`[focus] Can't detect focused element - permission issue`));
+      console.log(chalk.dim(`[focus] App: ${data.appName || 'unknown'}, debug: ${data.debug}`));
+      return true;
+    }
+
+    const prevValue = cachedIsTextInput;
     cachedIsTextInput = data.isTextInput === true;
 
-    // Log when focus state changes
-    if (process.env.DEBUG) {
-      console.log(chalk.dim(`[focus] isTextInput: ${cachedIsTextInput}, role: ${data.role}, app: ${data.appName}`));
+    // Always log focus check results when smart mode is active
+    console.log(chalk.dim(`[focus] isTextInput: ${cachedIsTextInput}, role: "${data.role || ''}", subrole: "${data.subrole || ''}", app: "${data.appName || ''}", editable: ${data.isEditable || false}`));
+
+    if (prevValue !== cachedIsTextInput) {
+      console.log(chalk.cyan(`[focus] State changed: ${prevValue} → ${cachedIsTextInput}`));
     }
 
     return cachedIsTextInput;
   } catch (e) {
+    // Try to parse output even on error exit code
+    try {
+      const stderr = e.stderr?.toString() || '';
+      const stdout = e.stdout?.toString() || '';
+      const output = stdout || stderr;
+      if (output) {
+        const data = JSON.parse(output);
+        if (data.error === 'accessibility_not_granted') {
+          console.log(chalk.yellow(`[focus] Accessibility permission required for Smart Mode`));
+          console.log(chalk.dim(`[focus] App: ${data.appName || 'unknown'}`));
+          smartCommandsOnly = false;
+          return true;
+        }
+      }
+    } catch (parseErr) {
+      // Ignore parse errors
+    }
+    console.log(chalk.red(`[focus] Error checking focus: ${e.message}`));
     // On error, default to allowing typing
     return true;
   }

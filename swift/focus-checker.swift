@@ -8,6 +8,7 @@ import Foundation
  * Returns JSON with focus state information.
  *
  * Requires Accessibility permission (System Settings > Privacy & Security > Accessibility)
+ * The PARENT PROCESS (Terminal, Electron app, etc.) must have accessibility permissions.
  */
 
 // Text input roles in macOS Accessibility API
@@ -16,7 +17,12 @@ let textInputRoles: Set<String> = [
     "AXTextArea",
     "AXComboBox",
     "AXSearchField",
-    "AXStaticText",  // Some editable text views
+]
+
+// Roles that need additional editable check (not text input by default)
+let conditionalTextRoles: Set<String> = [
+    "AXStaticText",  // Only if editable
+    "AXWebArea",     // Only if editable (whole page isn't a text input)
 ]
 
 // Subroles that indicate editable content
@@ -32,8 +38,11 @@ struct FocusInfo {
     var role: String = ""
     var subrole: String = ""
     var appName: String = ""
+    var appBundleId: String = ""
     var isEditable: Bool = false
     var hasSelectedTextRange: Bool = false
+    var debug: String = ""
+    var error: String = ""
 }
 
 func getAttributeValue(_ element: AXUIElement, _ attribute: String) -> AnyObject? {
@@ -45,108 +54,193 @@ func getAttributeValue(_ element: AXUIElement, _ attribute: String) -> AnyObject
     return nil
 }
 
+func axErrorDescription(_ error: AXError) -> String {
+    switch error {
+    case .success: return "success"
+    case .failure: return "failure"
+    case .illegalArgument: return "illegal_argument"
+    case .invalidUIElement: return "invalid_ui_element"
+    case .invalidUIElementObserver: return "invalid_ui_element_observer"
+    case .cannotComplete: return "cannot_complete"
+    case .attributeUnsupported: return "attribute_unsupported"
+    case .actionUnsupported: return "action_unsupported"
+    case .notificationUnsupported: return "notification_unsupported"
+    case .notImplemented: return "not_implemented"
+    case .notificationAlreadyRegistered: return "notification_already_registered"
+    case .notificationNotRegistered: return "notification_not_registered"
+    case .apiDisabled: return "api_disabled"
+    case .noValue: return "no_value"
+    case .parameterizedAttributeUnsupported: return "parameterized_attribute_unsupported"
+    case .notEnoughPrecision: return "not_enough_precision"
+    @unknown default: return "unknown_\(error.rawValue)"
+    }
+}
+
+func getFrontmostAppInfo() -> (name: String, bundleId: String, pid: pid_t)? {
+    if let app = NSWorkspace.shared.frontmostApplication {
+        return (
+            name: app.localizedName ?? "Unknown",
+            bundleId: app.bundleIdentifier ?? "",
+            pid: app.processIdentifier
+        )
+    }
+    return nil
+}
+
 func checkFocusedElement() -> FocusInfo {
     var info = FocusInfo()
+    var debugLog = [String]()
 
-    // Get system-wide accessibility element
-    let systemWide = AXUIElementCreateSystemWide()
+    // First, get frontmost app via NSWorkspace (more reliable)
+    if let appInfo = getFrontmostAppInfo() {
+        info.appName = appInfo.name
+        info.appBundleId = appInfo.bundleId
+        debugLog.append("frontmost app: \(appInfo.name) (\(appInfo.bundleId))")
 
-    // Get focused application
-    if let focusedApp = getAttributeValue(systemWide, kAXFocusedApplicationAttribute) {
-        let appElement = focusedApp as! AXUIElement
-        if let appName = getAttributeValue(appElement, kAXTitleAttribute) as? String {
-            info.appName = appName
-        }
+        // Create AXUIElement for this specific app by PID
+        let appElement = AXUIElementCreateApplication(appInfo.pid)
 
         // For Chrome/Electron apps, try to enable enhanced accessibility
         AXUIElementSetAttributeValue(appElement, "AXEnhancedUserInterface" as CFString, true as CFTypeRef)
         AXUIElementSetAttributeValue(appElement, "AXManualAccessibility" as CFString, true as CFTypeRef)
-    }
 
-    // Get focused UI element
-    guard let focusedElement = getAttributeValue(systemWide, kAXFocusedUIElementAttribute) else {
-        return info
-    }
+        // Try to get focused element from the app
+        var focusedUIElement: AnyObject?
+        let focusResult = AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedUIElement)
 
-    let element = focusedElement as! AXUIElement
+        if focusResult == .success, let element = focusedUIElement {
+            debugLog.append("got focused element")
+            let axElement = element as! AXUIElement
 
-    // Get role
-    if let role = getAttributeValue(element, kAXRoleAttribute) as? String {
-        info.role = role
+            // Get role
+            if let role = getAttributeValue(axElement, kAXRoleAttribute) as? String {
+                info.role = role
+                debugLog.append("role: \(role)")
 
-        // Check if it's a known text input role
-        if textInputRoles.contains(role) {
-            info.isTextInput = true
+                // Check if it's a definite text input role
+                if textInputRoles.contains(role) {
+                    info.isTextInput = true
+                    debugLog.append("matched text role")
+                }
+                // Conditional roles only count if editable (checked later)
+                // Don't set isTextInput here for AXWebArea, AXStaticText, etc.
+            }
+
+            // Get subrole
+            if let subrole = getAttributeValue(axElement, kAXSubroleAttribute) as? String {
+                info.subrole = subrole
+                debugLog.append("subrole: \(subrole)")
+
+                // Check if it's an editable subrole
+                if editableSubroles.contains(subrole) {
+                    info.isTextInput = true
+                    info.isEditable = true
+                    debugLog.append("matched editable subrole")
+                }
+            }
+
+            // Check if element has selected text range (indicates text input)
+            if let _ = getAttributeValue(axElement, kAXSelectedTextRangeAttribute) {
+                info.hasSelectedTextRange = true
+                info.isTextInput = true
+                debugLog.append("has selected text range")
+            }
+
+            // Additional check: see if AXInsertionPointLineNumber exists (text cursor)
+            if let _ = getAttributeValue(axElement, "AXInsertionPointLineNumber") {
+                info.isTextInput = true
+                info.isEditable = true
+                debugLog.append("has insertion point")
+            }
+
+            // Check role description for web text inputs
+            if let roleDesc = getAttributeValue(axElement, kAXRoleDescriptionAttribute) as? String {
+                let lowerDesc = roleDesc.lowercased()
+                debugLog.append("roleDesc: \(roleDesc)")
+                if lowerDesc.contains("text") || lowerDesc.contains("edit") || lowerDesc.contains("input") || lowerDesc.contains("field") {
+                    info.isTextInput = true
+                    debugLog.append("matched roleDesc")
+                }
+            }
+
+            // Check if element is editable via AXValue writability
+            var isSettable: DarwinBoolean = false
+            if AXUIElementIsAttributeSettable(axElement, "AXValue" as CFString, &isSettable) == .success {
+                if isSettable.boolValue {
+                    info.isEditable = true
+                    info.isTextInput = true
+                    debugLog.append("AXValue is settable")
+                }
+            }
+        } else {
+            let errorDesc = axErrorDescription(focusResult)
+            debugLog.append("failed to get focused element: \(errorDesc) (\(focusResult.rawValue))")
+
+            // If we got cannot_complete, it's likely a permission issue
+            if focusResult == .cannotComplete {
+                info.error = "accessibility_permission_needed"
+                debugLog.append("parent process may need accessibility permission")
+            }
         }
+    } else {
+        debugLog.append("no frontmost app found")
     }
 
-    // Get subrole
-    if let subrole = getAttributeValue(element, kAXSubroleAttribute) as? String {
-        info.subrole = subrole
-
-        // Check if it's an editable subrole
-        if editableSubroles.contains(subrole) {
-            info.isTextInput = true
-            info.isEditable = true
-        }
-    }
-
-    // Check if element has selected text range (indicates text input)
-    if let _ = getAttributeValue(element, kAXSelectedTextRangeAttribute) {
-        info.hasSelectedTextRange = true
-        info.isTextInput = true
-    }
-
-    // Check if element has value attribute and is editable
-    if let _ = getAttributeValue(element, kAXValueAttribute) {
-        // Check if we can set the value (indicates editable)
-        var settableAttributes: CFArray?
-        if AXUIElementCopyActionNames(element, &settableAttributes) == .success {
-            // Has actions, might be interactive
-        }
-    }
-
-    // Additional check: see if AXInsertionPointLineNumber exists (text cursor)
-    if let _ = getAttributeValue(element, "AXInsertionPointLineNumber") {
-        info.isTextInput = true
-        info.isEditable = true
-    }
-
-    // Check role description for web text inputs
-    if let roleDesc = getAttributeValue(element, kAXRoleDescriptionAttribute) as? String {
-        let lowerDesc = roleDesc.lowercased()
-        if lowerDesc.contains("text") || lowerDesc.contains("edit") || lowerDesc.contains("input") {
-            info.isTextInput = true
-        }
-    }
-
+    info.debug = debugLog.joined(separator: "; ")
     return info
+}
+
+func promptForAccessibility() {
+    // This creates a prompt for accessibility permission
+    let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+    AXIsProcessTrustedWithOptions(options)
 }
 
 func main() {
     // Check if we have accessibility permission
-    guard AXIsProcessTrusted() else {
-        let result: [String: Any] = [
+    let isTrusted = AXIsProcessTrusted()
+
+    if !isTrusted {
+        // Prompt for permission
+        promptForAccessibility()
+
+        // Still try to get basic app info even without full accessibility
+        var result: [String: Any] = [
             "error": "accessibility_not_granted",
-            "isTextInput": false
+            "isTextInput": false,
+            "message": "Please grant accessibility permission in System Settings > Privacy & Security > Accessibility",
+            "debug": "AXIsProcessTrusted returned false, prompting for permission"
         ]
+
+        // We can still get frontmost app via NSWorkspace without accessibility
+        if let appInfo = getFrontmostAppInfo() {
+            result["appName"] = appInfo.name
+            result["appBundleId"] = appInfo.bundleId
+        }
+
         printJSON(result)
         exit(1)
     }
 
     let info = checkFocusedElement()
 
-    let result: [String: Any] = [
+    var result: [String: Any] = [
         "isTextInput": info.isTextInput,
         "isEditable": info.isEditable,
         "role": info.role,
         "subrole": info.subrole,
         "appName": info.appName,
-        "hasSelectedTextRange": info.hasSelectedTextRange
+        "appBundleId": info.appBundleId,
+        "hasSelectedTextRange": info.hasSelectedTextRange,
+        "debug": info.debug
     ]
 
+    if !info.error.isEmpty {
+        result["error"] = info.error
+    }
+
     printJSON(result)
-    exit(0)
+    exit(info.error.isEmpty ? 0 : 1)
 }
 
 func printJSON(_ dict: [String: Any]) {

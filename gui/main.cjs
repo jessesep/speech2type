@@ -106,7 +106,7 @@ function createTrayIcon(state, frame = 0) {
   const scale = 2;
   const width = 16 * scale;  // 32px
   const height = 16 * scale; // 32px
-  const cacheKey = `${state}-${frame}-${currentMode}`;
+  const cacheKey = `${state}-${frame}-${currentMode}-${smartModeEnabled}`;
 
   if (icons[cacheKey]) {
     return icons[cacheKey];
@@ -138,7 +138,7 @@ function createTrayIcon(state, frame = 0) {
   const buffer = Buffer.alloc(width * height * 4);
 
   // All modes use 3 bars - animation style varies by mode
-  drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, currentMode);
+  drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, currentMode, smartModeEnabled);
 
   // Create image with proper scale factor for retina
   const icon = nativeImage.createFromBuffer(buffer, {
@@ -356,7 +356,7 @@ function drawMusicEyeIcon(buffer, width, height, r, g, b, a, frame) {
  * - music: energetic bouncing
  * Scales automatically for hi-res (32x32)
  */
-function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, mode = 'general') {
+function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, mode = 'general', smartMode = false) {
   const scale = width / 16;
   const barWidth = Math.round(2 * scale);
   const gap = Math.round(3 * scale);
@@ -399,6 +399,11 @@ function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, 
     }
   };
 
+  // Get center bar height for dot positioning
+  const centerBarHeight = getBarHeight(1);
+  const centerBarTop = Math.floor((height - centerBarHeight) / 2);
+  const centerBarBottom = centerBarTop + centerBarHeight;
+
   for (let barIndex = 0; barIndex < 3; barIndex++) {
     const barX = startX + barIndex * (barWidth + gap);
     const barHeight = getBarHeight(barIndex);
@@ -410,6 +415,23 @@ function drawWaveformIcon(buffer, width, height, r, g, b, a, frame, isAnimated, 
           let alpha = a;
           if (y === barTop || y === barTop + barHeight - 1) alpha = Math.round(a * 0.7);
           buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = alpha;
+        }
+      }
+    }
+  }
+
+  // Draw smart mode dot under center bar (like exclamation mark dot)
+  if (smartMode) {
+    const dotSize = Math.round(2 * scale);  // 2px dot (4px at 2x scale)
+    const centerBarX = startX + 1 * (barWidth + gap);
+    const dotX = centerBarX + Math.floor((barWidth - dotSize) / 2);
+    const dotY = centerBarBottom + Math.round(1.5 * scale);  // Small gap below bar
+
+    for (let y = dotY; y < dotY + dotSize && y < height; y++) {
+      for (let x = dotX; x < dotX + dotSize && x < width; x++) {
+        if (x >= 0 && y >= 0) {
+          const idx = (y * width + x) * 4;
+          buffer[idx] = r; buffer[idx + 1] = g; buffer[idx + 2] = b; buffer[idx + 3] = a;
         }
       }
     }
@@ -1197,6 +1219,13 @@ function buildContextMenu() {
       checked: ttsEnabled,
       click: toggleTTS
     },
+    {
+      label: 'Smart Mode',
+      type: 'checkbox',
+      checked: smartModeEnabled,
+      click: toggleSmartMode,
+      enabled: isServiceRunning
+    },
     { type: 'separator' },
     {
       label: isServiceRunning ? 'Restart Service' : 'Start Service',
@@ -1311,8 +1340,9 @@ function toggleTTS() {
 function toggleSmartMode() {
   smartModeEnabled = !smartModeEnabled;
 
-  // Notify backend
-  sendCommand(smartModeEnabled ? 'smart-commands-on' : 'smart-commands-off');
+  // Send command to backend
+  const command = smartModeEnabled ? 'smart-commands-on' : 'smart-commands-off';
+  sendCommand(command);
 
   console.log(`Smart Mode: ${smartModeEnabled ? 'enabled' : 'disabled'} (GUI)`);
   tray.setContextMenu(buildContextMenu());
@@ -1483,6 +1513,7 @@ function startStateWatcher() {
     const prevListening = isListening;
     const prevTTS = ttsEnabled;
     const prevMode = currentMode;
+    const prevSmartMode = smartModeEnabled;
 
     checkTTSState();
 
@@ -1518,7 +1549,8 @@ function startStateWatcher() {
     const stateChanged = prevSpeaking !== isSpeaking ||
                          prevListening !== isListening ||
                          prevTTS !== ttsEnabled ||
-                         prevMode !== currentMode;
+                         prevMode !== currentMode ||
+                         prevSmartMode !== smartModeEnabled;
 
     if (stateChanged) {
       updateTrayIcon();
