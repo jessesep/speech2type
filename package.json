@@ -67,6 +67,7 @@
   },
   "preferGlobal": true,
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@deepgram/sdk": "^3.6.0",
     "boxen": "^5.1.2",
     "chalk": "^4.1.2",
@@ -100,12 +101,16 @@
       {
         "from": "bin/",
         "to": "bin/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "addons/",
         "to": "addons/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
@@ -113,11 +118,15 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "hardenedRuntime": true,
