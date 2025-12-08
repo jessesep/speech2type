@@ -525,6 +525,23 @@ DEBUG=1 s2t start
 - **Issues**: [GitHub Issues](https://github.com/jessesep/speech2type/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jessesep/speech2type/discussions)
 
+## 🗺️ Roadmap
+
+Speech2Type Enhanced is evolving toward intelligent, self-learning voice control.
+
+### Coming Soon
+- **AI Command Understanding**: Say commands naturally, the app learns your phrases
+- **Training Mode**: "Computer learn" - teach new commands through conversation
+- **Local Speech Recognition**: Reduced latency, offline capability
+- **Per-App Profiles**: Automatic command sets based on focused application
+
+### Vision
+- Zero-configuration voice control that adapts to you
+- Voice-first settings and customization
+- Community-shared command libraries
+
+See the full [Roadmap Documentation](docs/roadmap/README.md) for details.
+
 ## 🤝 Contributing
 
 We welcome contributions! Here's how to get started:
