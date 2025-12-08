@@ -299,9 +299,9 @@ class IntentResolverCLI {
         ? `Context: User is in ${context.appName}. `
         : '';
 
-      const prompt = `${SYSTEM_PROMPT}\n\n${contextHint}User said: "${speech}"`;
+      const userMessage = `${contextHint}User said: "${speech}"`;
 
-      const response = await this._runClaude(prompt);
+      const response = await this._runClaude(userMessage);
       const latency = Date.now() - startTime;
       this.stats.totalLatency += latency;
 
@@ -337,15 +337,21 @@ class IntentResolverCLI {
 
   /**
    * Run claude CLI with a prompt
-   * @param {string} prompt
+   * @param {string} userMessage
    * @returns {Promise<string>}
    */
-  _runClaude(prompt) {
+  _runClaude(userMessage) {
     return new Promise((resolve, reject) => {
-      // Use claude CLI in print mode (non-interactive, just returns response)
-      const claude = spawn('claude', ['-p', prompt, '--model', 'claude-3-haiku-20240307'], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 30000
+      // Use claude CLI in print mode with system prompt
+      const args = [
+        '-p', userMessage,
+        '--system-prompt', SYSTEM_PROMPT,
+        '--model', 'haiku',
+        '--output-format', 'text'
+      ];
+
+      const claude = spawn('claude', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
       });
 
       let stdout = '';
